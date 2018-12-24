@@ -1,7 +1,6 @@
 function [] = spatialIIR_symbolicTheroyWrapper(cfgIn,scriptFlags)
     clear;
     clc;
-    close all;
     %% path handling
     [funcPath, ~, ~] = fileparts(mfilename('fullpath'));
     try
@@ -46,7 +45,7 @@ function [] = spatialIIR_symbolicTheroyWrapper(cfgIn,scriptFlags)
 	assume(				D, 'real');
 	syms 				theta;
 	assume(				theta, 'real');
-	tauTheta 			= D*cos(theta)/c;
+	tauTheta 			= omega*D*cos(theta)/c;
 	sensorID_zeroBased 	= 0:(nSensors-1);
 	sensorID_oneBased 	= 1:nSensors;
 	d 					= reshape(exp(-1i*omega*tauTheta*sensorID_zeroBased),[],1);
