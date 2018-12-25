@@ -62,8 +62,8 @@ DVal            = 0.01;
 cVal            = 3e8;
 thetaVal        = polesThetaVec(1);
 
-symVarVec       = [D    ; omega     ; c     ; alphaV(:)      ; Range     ; theta      ];
-symVarValuesVec = [DVal ; omegaVal  ; cVal  ; alphaValues(:) ; RangeVal  ; thetaVal   ];
+symVarVec       = [D    ; omega     ; c     ; alphaV(:)      ; targetRange  ; theta      ];
+symVarValuesVec = [DVal ; omegaVal  ; cVal  ; alphaValues(:) ; RangeVal     ; thetaVal   ];
 
 CRLB_theta_kappa_sym    = subs(CRLB_theta,              symVarVec, symVarValuesVec);
 betaV_values            = reshape(eval(subs(betaV_values_sym,   symVarVec, symVarValuesVec)),size(betaV));
@@ -71,9 +71,10 @@ betaV_values            = reshape(eval(subs(betaV_values_sym,   symVarVec, symVa
 pretty(CRLB_theta_kappa_sym)
 
 CRLB_theta_kappa    = [];
-for kappa = 0.1 : 0.01 : 1
+kappaVec            = 0 : 0.01 : 1;
+for kappa = kappaVec
     CRLB_theta_kappa(end+1)    = eval(subs(CRLB_theta_kappa_sym(end),  betaV, kappa*betaV_values));
 end
-CRLB_theta_norm = CRLB_theta_kappa / max(abs(CRLB_theta_kappa));
-figure;plot(abs(CRLB_theta_norm(:)));
+CRLB_theta_norm = CRLB_theta_kappa ;%/ max(abs(CRLB_theta_kappa));
+figure;plot(kappaVec,abs(CRLB_theta_norm(:)));
 end

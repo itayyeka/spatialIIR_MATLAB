@@ -37,11 +37,11 @@ function [] = spatialIIR_symbolicTheroyWrapper(cfgIn,scriptFlags)
 	betaH				= conj(betaT);
 	syms 				omega;
 	assume(				omega, 'real');
-	syms 				Range;
-	assume(				Range, 'real');    
+	syms 				targetRange;
+	assume(				targetRange, 'real');    
 	syms 				c;
 	assume(				c, 'real');
-    tau                 = Range/c; 
+    tau                 = targetRange/c; 
 	syms 				D;
 	assume(				D, 'real');
 	syms 				theta;
@@ -69,7 +69,7 @@ function [] = spatialIIR_symbolicTheroyWrapper(cfgIn,scriptFlags)
 	crlbVariables.betaH 				= betaH;
 	crlbVariables.omega 				= omega;
 	crlbVariables.tau 					= tau;
-	crlbVariables.Range					= Range;
+	crlbVariables.targetRange			= targetRange;
 	crlbVariables.c 					= c;
 	crlbVariables.D 					= D;
 	crlbVariables.theta 				= theta;
