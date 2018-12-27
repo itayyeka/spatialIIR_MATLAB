@@ -58,6 +58,7 @@ integralFreqVec             = linspace(-0.5,0.5,integralNPoints);
 sSpectrumInterpulated       = interp1(sSpectrumFreq, sSpectrum, integralFreqVec, 'spline');
 sSpectrumInterpulated_abs2  = sSpectrumInterpulated.*conj(sSpectrumInterpulated);
 dOmega                      = 2*pi/integralNPoints;
+omegaSymVec                 = repmat(omega, size(integralFreqVec));
 
 %% simulating
 if true
@@ -117,44 +118,29 @@ if true
     end
     
     %% calculating CRLB values
-    paramSetSize    = size(crlb_theta_resultMat);
-    omegaSymMat     = repmat(omega, size(crlb_theta_resultMat));
-    paramSet_CELL   = cell(paramSetSize);
-    for paramSetID  = 1:numel(crlb_theta_resultMat)
+    paramSet_CELL = cell(size(crlb_theta_resultMat));
+    for paramSetID = 1:numel(crlb_theta_resultMat)
         paramSet_CELL{paramSetID}   = [DVal     ;cVal    ;RangeVal + rErrMat(paramSetID)    ;thetaMat(paramSetID)   ;alphaValues(:) ;betaValues(:)];
     end
-    symInptPartSpectum      = cell(paramSetSize);
-    integralResultVec       = cell(paramSetSize);
-    integralResult          = cell(paramSetSize);
-    integralFreqVec_CELL    = repmat({integralFreqVec}, paramSetSize);
     
-    parfor paramSetID = 1:numel(paramSet_CELL)        
+    parfor paramSetID = 1:numel(crlb_theta_resultMat)
+        %% generate symVarVec in current parameters set
+        symVarValues    = paramSet_CELL{}
+        
         %% symbolic parts of integrands
         if true
             %% J_theta_theta
-            curSymIntPart   = subs(J_theta_theta_symIntPart,symVarVec_noOmega,paramSet_CELL{paramSetID});
-            
-            symInptPartSpectum{paramSetID}  = subs(curSymIntPart,omegaSymMat(paramSetID),integralFreqVec_CELL{paramSetID});
-            integralResultVec{paramSetID}   = symInptPartSpectum{paramSetID}.*sSpectrumInterpulated_abs2;
-            integralResult{paramSetID}      = sum(integralResultVec{paramSetID});
-            
-            J_theta_theta   = integralResult{paramSetID};
+            curSymIntPart   = subs(J_theta_theta_symIntPart,symVarVec_noOmega,symVarValues);
+            numericalIntegration_SCRIPT;
+            J_theta_theta   = integralResult;
             %% J_tau_tau
-            curSymIntPart   = subs(J_tau_tau_symIntPart,symVarVec_noOmega,paramSet_CELL{paramSetID});
-            
-            symInptPartSpectum{paramSetID}  = subs(curSymIntPart,omegaSymMat(paramSetID),integralFreqVec_CELL{paramSetID});
-            integralResultVec{paramSetID}   = symInptPartSpectum{paramSetID}.*sSpectrumInterpulated_abs2;
-            integralResult{paramSetID}      = sum(integralResultVec{paramSetID});
-            
-            J_tau_tau       = integralResult{paramSetID};
+            curSymIntPart   = subs(J_tau_tau_symIntPart,symVarVec_noOmega,symVarValues);
+            numericalIntegration_SCRIPT;
+            J_tau_tau       = integralResult;
             %% J_theta_tau
-            curSymIntPart       = subs(J_theta_tau_symIntPart,symVarVec_noOmega,paramSet_CELL{paramSetID});
-            
-            symInptPartSpectum{paramSetID}  = subs(curSymIntPart,omegaSymMat(paramSetID),integralFreqVec_CELL{paramSetID});
-            integralResultVec{paramSetID}   = symInptPartSpectum{paramSetID}.*sSpectrumInterpulated_abs2;
-            integralResult{paramSetID}      = sum(integralResultVec{paramSetID});
-            
-            J_theta_tau         = integralResult{paramSetID};
+            curSymIntPart       = subs(J_theta_tau_symIntPart,symVarVec_noOmega,symVarValues);
+            numericalIntegration_SCRIPT;
+            J_theta_tau         = integralResult;
             J_tau_theta         = J_theta_tau;
         end
         
