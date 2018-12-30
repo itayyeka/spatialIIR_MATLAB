@@ -97,8 +97,6 @@ if scriptFlags.crlbSimpleSim
     crlbSimpleSimCfg.backoffFactor_min                      = 1;
     crlbSimpleSimCfg.backoffFactor_max                      = 1;
     crlbSimpleSimCfg.backoffFactor_nValues                  = 1;
-    crlbSimpleSimCfg.rErr_min                               = -1;
-    crlbSimpleSimCfg.rErr_max                               = 1;
     crlbSimpleSimCfg.rErr_nValues                           = 11;
     crlbSimpleSimCfg.thetaSim_azimuthalWidth                = 0;
     crlbSimpleSimCfg.thetaSim_nPoints                       = 1;
@@ -109,9 +107,10 @@ if scriptFlags.crlbSimpleSim
     crlbSimpleSimCfg.fSample                                = 20e9; 
     crlbSimpleSimCfg.syncSigCfg.duration_SAMPLES            = 1024;
     crlbSimpleSimCfg.syncSigCfg.baseFreq_relative           = 0.2;
-    crlbSimpleSimCfg.syncSigCfg.bandwidth_relative_max      = 0.3;
-    crlbSimpleSimCfg.syncSigCfg.bandwidth_relative_nValues  = 30;
+    crlbSimpleSimCfg.syncSigCfg.bandwidth_relative_max      = 0.1;
+    crlbSimpleSimCfg.syncSigCfg.bandwidth_relative_nValues  = 10;
     crlbSimpleSimCfg.integralNPoints                        = 128;
+    crlbSimpleSimCfg.useSimplifiedSignal                    = 1;
     %% execute
     crlbSimpleSim_output    = crlbSimpleSim(crlbVariables,crlbSimpleSimCfg);
     finaCfg                 = crlbSimpleSim_output.cfg;

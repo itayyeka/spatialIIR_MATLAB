@@ -143,85 +143,81 @@ if true
 end
 
 warning('off');
-if true
-    %% stage 1
-    parfor outputID = 1 : numel(simOutData_CELL)
-        disp(['tescase #' num2str(outputID)]);
-        curParamSet         = simOutData_CELL{outputID}.paramSet;
-        curBandwidth        = curParamSet.bandwidth;
-        curBackoffFactor    = curParamSet.backoffFactor;
-        curRErr             = curParamSet.rErr;
-        curTheta            = curParamSet.theta;
+parfor outputID = 1 : numel(simOutData_CELL)
+    disp(['tescase #' num2str(outputID)]);
+    curParamSet         = simOutData_CELL{outputID}.paramSet;
+    curBandwidth        = curParamSet.bandwidth;
+    curBackoffFactor    = curParamSet.backoffFactor;
+    curRErr             = curParamSet.rErr;
+    curTheta            = curParamSet.theta;
+    
+    %% clculate the spectral content of s(t)
+    generateSignalData_cfgIn                        = syncSigCfg;
+    generateSignalData_cfgIn.bandwidth_relative     = curBandwidth;
+    
+    sData                           = generateSignalData(generateSignalData_cfgIn);
+    sSpectrum                       = fftshift(fft(sData));
+    sSpectrumFreq                   = linspace(-0.5,0.5,generateSignalData_cfgIn.duration_SAMPLES);
+    
+    %% prepare for numerical integration
+    sSpectrumInterpulated       = interp1(sSpectrumFreq, sSpectrum, integralFreqVec, 'spline');
+    sSpectrumInterpulated_abs2  = sSpectrumInterpulated.*conj(sSpectrumInterpulated);
+    
+    if useSimplifiedSignal
+        sigFreqSupport_relative     = ...
+            syncSigCfg.baseFreq_relative ...
+            +...
+            [-0.5 0.5] * syncSigCfg.bandwidth_relative_max;
+        sSpectrumInterpulated_abs2  = ...
+            double(abs(integralFreqVec)>=sigFreqSupport_relative(1)) ...
+            .* ...
+            double(abs(integralFreqVec)<=sigFreqSupport_relative(2)) ...
+            ;
         
-        %% clculate the spectral content of s(t)
-        generateSignalData_cfgIn                        = syncSigCfg;
-        generateSignalData_cfgIn.bandwidth_relative     = curBandwidth;
-        
-        sData                           = generateSignalData(generateSignalData_cfgIn);
-        sSpectrum                       = fftshift(fft(sData));
-        sSpectrumFreq                   = linspace(-0.5,0.5,generateSignalData_cfgIn.duration_SAMPLES);
-        
-        %% prepare for numerical integration
-        sSpectrumInterpulated       = interp1(sSpectrumFreq, sSpectrum, integralFreqVec, 'spline');
-        sSpectrumInterpulated_abs2  = sSpectrumInterpulated.*conj(sSpectrumInterpulated);
-        
-        if useSimplifiedSignal
-            sigFreqSupport_relative     = ...
-                syncSigCfg.baseFreq_relative ...
-                +...
-                [-0.5 0.5] * syncSigCfg.bandwidth_relative_max;
-            sSpectrumInterpulated_abs2  = ...
-                double(abs(integralFreqVec)>=sigFreqSupport_relative(1)) ...
-                .* ...
-                double(abs(integralFreqVec)<=sigFreqSupport_relative(2)) ...
-                ;
-            
-            if false
-                %% DEBUG
-                figure; plot(sSpectrumInterpulated_abs2);
-            end
+        if false
+            %% DEBUG
+            figure; plot(sSpectrumInterpulated_abs2);
         end
-        
-        %% calculating CRLB values
-        if true
-            %% symbolic parts of integrands
-            if true
-                J_symVarVec     =   [ D;        alphaV(:);      betaV(:);                           c;      targetRange;        theta   ];
-                J_symVarValues  =   [ DVal;     alphaValues(:); curBackoffFactor*betaValues(:);     cVal;   RangeVal + curRErr; curTheta];
-                %% J_theta_theta
-                curSymIntPart   = subs(J_theta_theta_symIntPart,J_symVarVec,J_symVarValues);
-                
-                symInptPartSpectum  = simplify(subs(curSymIntPart,omega,integralFreqVec));
-                integralResultVec   = symInptPartSpectum.*sSpectrumInterpulated_abs2;
-                integralResult      = sum(integralResultVec);
-                
-                J_theta_theta   = integralResult;
-                %% J_tau_tau
-                curSymIntPart   = subs(J_tau_tau_symIntPart,J_symVarVec,J_symVarValues);
-                
-                symInptPartSpectum  = subs(curSymIntPart,omega,integralFreqVec);
-                integralResultVec   = symInptPartSpectum.*sSpectrumInterpulated_abs2;
-                integralResult      = sum(integralResultVec);
-                
-                J_tau_tau       = integralResult;
-                %% J_theta_tau
-                curSymIntPart       = subs(J_theta_tau_symIntPart,J_symVarVec,J_symVarValues);
-                
-                symInptPartSpectum  = subs(curSymIntPart,omega,integralFreqVec);
-                integralResultVec   = symInptPartSpectum.*sSpectrumInterpulated_abs2;
-                integralResult      = sum(integralResultVec);
-                
-                J_theta_tau         = integralResult;
-                J_tau_theta         = J_theta_tau;
-            end
-            %% form the information matrix
-            J       = dOmega*[J_theta_theta J_theta_tau ; J_tau_tau J_tau_theta];
-        end
-        
-        simOutData_CELL{outputID}.Jsym  = J;
     end
+    
+    %% calculating CRLB values
+    if true        
+        %% symbolic parts of integrands
+        if true
+            J_symVarVec     =   [ D;        alphaV(:);      betaV(:);                           c;      targetRange;        theta   ];
+            J_symVarValues  =   [ DVal;     alphaValues(:); curBackoffFactor*betaValues(:);     cVal;   RangeVal + curRErr; curTheta];
+            %% J_theta_theta
+            curSymIntPart   = subs(J_theta_theta_symIntPart,J_symVarVec,J_symVarValues);
+            
+            symInptPartSpectum  = eval(subs(curSymIntPart,omega,integralFreqVec));
+            integralResultVec   = symInptPartSpectum.*sSpectrumInterpulated_abs2;
+            integralResult      = sum(integralResultVec);
+            
+            J_theta_theta   = integralResult;
+            %% J_tau_tau
+            curSymIntPart   = subs(J_tau_tau_symIntPart,J_symVarVec,J_symVarValues);
+            
+            symInptPartSpectum  = subs(curSymIntPart,omega,integralFreqVec);
+            integralResultVec   = symInptPartSpectum.*sSpectrumInterpulated_abs2;
+            integralResult      = sum(integralResultVec);
+            
+            J_tau_tau       = integralResult;
+            %% J_theta_tau
+            curSymIntPart       = subs(J_theta_tau_symIntPart,J_symVarVec,J_symVarValues);
+            
+            symInptPartSpectum  = subs(curSymIntPart,omega,integralFreqVec);
+            integralResultVec   = symInptPartSpectum.*sSpectrumInterpulated_abs2;
+            integralResult      = sum(integralResultVec);
+            
+            J_theta_tau         = integralResult;
+            J_tau_theta         = J_theta_tau;
+        end
+        %% form the information matrix
+        J       = dOmega*[J_theta_theta J_theta_tau ; J_tau_tau J_tau_theta];
+    end    
+    
+    simOutData_CELL{outputID}.Jsym  = J;
 end
-
 warning('on');
 
 extractedSimOutData_CELL    = cell(size(simOutData_CELL));
@@ -234,7 +230,7 @@ simOutput.simOutData_CELL = extractedSimOutData_CELL;
 end
 
 function [CELL_out] = f_extractDataFromSimOut(CELL_in)
-CELL_out.paramSet   = CELL_in.paramSet;
-CELL_out.J          = eval(CELL_in.Jsym);
-CELL_out.Jinv       = inv(CELL_out.J);
+    CELL_out.paramSet   = CELL_in.paramSet;
+    CELL_out.J          = eval(CELL_in.Jsym);
+    CELL_out.Jinv       = inv(CELL_out.J); 
 end
