@@ -94,25 +94,25 @@ crlbVariables.BH                    = BH;
 %% sub scripts
 if scriptFlags.crlbSimpleSim
     %% configure
-    crlbSimpleSimCfg.backoffFactor_min                      = 1;
-    crlbSimpleSimCfg.backoffFactor_max                      = 1;
-    crlbSimpleSimCfg.backoffFactor_nValues                  = 1;
-    crlbSimpleSimCfg.rErr_min                               = -1;
-    crlbSimpleSimCfg.rErr_max                               = 1;
-    crlbSimpleSimCfg.rErr_nValues                           = 11;
-    crlbSimpleSimCfg.thetaSim_azimuthalWidth                = 0;
-    crlbSimpleSimCfg.thetaSim_nPoints                       = 1;
-    crlbSimpleSimCfg.polesThetaVec                          = repmat(pi/3,1,nSensors-1);
-    crlbSimpleSimCfg.RangeVal                               = 1000;
-    crlbSimpleSimCfg.DVal                                   = 0.01;
-    crlbSimpleSimCfg.cVal                                   = 3e8;
-    crlbSimpleSimCfg.fSample                                = 20e9; 
-    crlbSimpleSimCfg.syncSigCfg.duration_SAMPLES            = 1024;
-    crlbSimpleSimCfg.syncSigCfg.baseFreq_relative           = 0.2;
-    crlbSimpleSimCfg.syncSigCfg.bandwidth_relative_max      = 0.3;
-    crlbSimpleSimCfg.syncSigCfg.bandwidth_relative_nValues  = 30;
-    crlbSimpleSimCfg.integralNPoints                        = 128;
+    crlbSimpleSimCfg.backoffFactor_min              = 0.7;
+    crlbSimpleSimCfg.backoffFactor_max              = 1;
+    crlbSimpleSimCfg.backoffFactor_nValues          = 4;
+    crlbSimpleSimCfg.rErr_min                       = -10;
+    crlbSimpleSimCfg.rErr_max                       = 10;
+    crlbSimpleSimCfg.rErr_nValues                   = 10;
+    crlbSimpleSimCfg.thetaSim_azimuthalWidth        = 0;
+    crlbSimpleSimCfg.thetaSim_nPoints               = 1;
+    crlbSimpleSimCfg.polesThetaVec                  = [pi/3 -pi/3];
+    crlbSimpleSimCfg.RangeVal                       = 1000;
+    crlbSimpleSimCfg.DVal                           = 0.01;
+    crlbSimpleSimCfg.cVal                           = 3e8;
+    crlbSimpleSimCfg.fSample                        = 100e6; 
+    crlbSimpleSimCfg.syncSigCfg.duration_SAMPLES    = 1024;
+    crlbSimpleSimCfg.syncSigCfg.baseFreq_relative   = 0.1;
+    crlbSimpleSimCfg.syncSigCfg.bandwidth_relative  = 0.1;
+    crlbSimpleSimCfg.integralNPoints                = 128;
     %% execute
+    crlbSimpleSim_output = crlbSimpleSim(crlbVariables,crlbSimpleSimCfg);
     crlbSimpleSim_output    = crlbSimpleSim(crlbVariables,crlbSimpleSimCfg);
     finaCfg                 = crlbSimpleSim_output.cfg;
     simOut_savedName        = ['crlbSimpleSimOut_nSensors_' num2str(nSensors) '_c_' num2str(finaCfg.cVal/1000) 'kmSec_fSample_' num2str(finaCfg.fSample/1e6) 'Mhz'];
