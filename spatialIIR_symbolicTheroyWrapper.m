@@ -93,28 +93,64 @@ crlbVariables.BH                    = BH;
 
 %% sub scripts
 if scriptFlags.crlbSimpleSim
+    generateNoFeedbackRef   = 1;
+    
     %% configure
-    crlbSimpleSimCfg.backoffFactor_min                      = 1;
-    crlbSimpleSimCfg.backoffFactor_max                      = 1;
-    crlbSimpleSimCfg.backoffFactor_nValues                  = 1;
-    crlbSimpleSimCfg.rErr_nValues                           = 11;
-    crlbSimpleSimCfg.thetaSim_azimuthalWidth                = 0;
+    crlbSimpleSimCfg.backoffFactor_nValues                  = 3;
+    crlbSimpleSimCfg.rErr_nValues                           = 30;
+    crlbSimpleSimCfg.syncSigCfg.bandwidth_relative_nValues  = 10;
     crlbSimpleSimCfg.thetaSim_nPoints                       = 1;
-    crlbSimpleSimCfg.polesThetaVec                          = repmat(pi/3,1,nSensors-1);
+    
+    crlbSimpleSimCfg.backoffFactor_min                      = 0.7;
+    crlbSimpleSimCfg.backoffFactor_max                      = 1;
+    crlbSimpleSimCfg.syncSigCfg.baseFreq_relative           = 0.2;
+    crlbSimpleSimCfg.syncSigCfg.bandwidth_relative_max      = 0.3;
+    crlbSimpleSimCfg.thetaSim_azimuthalWidth                = 0;
+    
+    if generateNoFeedbackRef
+        crlbSimpleSimCfg.backoffFactor_nValues                  = 1;
+        crlbSimpleSimCfg.rErr_nValues                           = 30;
+        crlbSimpleSimCfg.syncSigCfg.bandwidth_relative_nValues  = 1;
+        crlbSimpleSimCfg.thetaSim_nPoints                       = 1;
+        
+        crlbSimpleSimCfg.backoffFactor_min                      = 0;
+        crlbSimpleSimCfg.backoffFactor_max                      = 0;
+        crlbSimpleSimCfg.syncSigCfg.bandwidth_relative_max      = 0.3;
+        crlbSimpleSimCfg.thetaSim_azimuthalWidth                = 0;
+    end
+    
+    crlbSimpleSimCfg.thetaSim_nPoints                       = 1;
+    polesThetaVec_padded                                    = repmat([-1 1]*pi/3,1,nSensors);
+    crlbSimpleSimCfg.polesThetaVec                          = polesThetaVec_padded(1:(nSensors-1));
     crlbSimpleSimCfg.RangeVal                               = 1000;
     crlbSimpleSimCfg.DVal                                   = 0.01;
     crlbSimpleSimCfg.cVal                                   = 3e8;
     crlbSimpleSimCfg.fSample                                = 20e9; 
-    crlbSimpleSimCfg.syncSigCfg.duration_SAMPLES            = 1024;
-    crlbSimpleSimCfg.syncSigCfg.baseFreq_relative           = 0.2;
-    crlbSimpleSimCfg.syncSigCfg.bandwidth_relative_max      = 0.1;
-    crlbSimpleSimCfg.syncSigCfg.bandwidth_relative_nValues  = 10;
+    crlbSimpleSimCfg.syncSigCfg.duration_SAMPLES            = 1024;    
     crlbSimpleSimCfg.integralNPoints                        = 128;
     crlbSimpleSimCfg.useSimplifiedSignal                    = 1;
     %% execute
+    curParPool      = gcp('nocreate');
+    nWantedCores    = round(0.9*feature('numcores'));
+    try
+        if ~(curParPool.NumWorkers == nWantedCores)
+            delete(gcp('nocreate'));
+            parpool('local',nWantedCores);
+        end
+    catch
+        parpool('local',nWantedCores);
+    end
     crlbSimpleSim_output    = crlbSimpleSim(crlbVariables,crlbSimpleSimCfg);
     finaCfg                 = crlbSimpleSim_output.cfg;
-    simOut_savedName        = ['crlbSimpleSimOut_nSensors_' num2str(nSensors) '_c_' num2str(finaCfg.cVal/1000) 'kmSec_fSample_' num2str(finaCfg.fSample/1e6) 'Mhz'];
+    simplifiedSif_STR       = '';
+    if crlbSimpleSimCfg.useSimplifiedSignal
+        simplifiedSif_STR   = '_simplifiedSif';
+    end
+    noFeedbackSTR           = '';
+    if generateNoFeedbackRef
+        noFeedbackSTR       = '_noFeedbackREF';
+    end
+    simOut_savedName        = ['crlbSimpleSimOut_nSensors_' num2str(nSensors) '_c_' num2str(finaCfg.cVal/1000) 'kmSec_fSample_' num2str(finaCfg.fSample/1e6) 'Mhz' simplifiedSif_STR noFeedbackSTR];
     savedFilename           = [regexprep(simOut_savedName,'\.','_') '.mat'];
     outputDir               = fullfile(funcPath,'simOut','crlbSimpleSim');
     if ~isdir(outputDir)

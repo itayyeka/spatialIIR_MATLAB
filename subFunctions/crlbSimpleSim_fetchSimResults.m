@@ -24,7 +24,7 @@ end
 
 %% fetch
 try
-    simOut  = finalCfg.simOut;
+    simOut  = cfgIn.simOut;
 catch
     simOutFullPath  = fullfile(finalCfg.simOutDir, finalCfg.filename);
     simOut = load(simOutFullPath);
@@ -39,14 +39,15 @@ catch
         'UniformOutput', false);
 end
 
-fetchCellsIndicatorMat  = zeros(numel(finalCfg.constantParams.names),numel(simOut.crlbSimpleSim_output.simOutData_CELL));
+nConstantParames = numel(finalCfg.constantParams.names);
+fetchCellsIndicatorMat  = zeros(nConstantParames,numel(simOut.crlbSimpleSim_output.simOutData_CELL));
 for constPrmID = 1:numel(finalCfg.constantParams.names)
     constPrmName    = finalCfg.constantParams.names{constPrmID};
     constPrmVal     = finalCfg.constantParams.values{constPrmID};
     
     fetchCellsIndicatorMat(constPrmID,:)    = cellfun(@(CELL) CELL.paramSet.(constPrmName) == constPrmVal, simOut.crlbSimpleSim_output.simOutData_CELL);
 end
-fetchCellsIndicatorVec = sum(double(fetchCellsIndicatorMat)) > 0;
+fetchCellsIndicatorVec = sum(double(fetchCellsIndicatorMat)) == nConstantParames;
 
 fetchedSimOut   = simOut.crlbSimpleSim_output.simOutData_CELL(fetchCellsIndicatorVec);
 
