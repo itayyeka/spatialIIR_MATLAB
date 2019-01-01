@@ -63,7 +63,7 @@ betaOpt_sym(2:end)  = -betaV_ideal(2:end)*phaseAlign;
 
 %% integral auxiliary veriables
 integralFreqVec_relative    = linspace(-0.5,0.5,integralNPoints);
-integralFreqVec             = 2*pi*fSample*integralFreqVec_relative;
+integralOmegaVec            = 2*pi*fSample*integralFreqVec_relative;
 dOmega                      = 2*pi/integralNPoints;
 
 %% auxiliary symbolics
@@ -76,6 +76,7 @@ alphaValues(1)              = 1;
 
 %% calculate FIM related symbolic expressions
 if true
+    J_symVarVec     =   [ D;        alphaV(:);      betaV(:);                           c;      targetRange;        theta;  omega];
     %% J_theta_theta_symIntPart
     term1           = (1-g)^2;
     term2           = ...
@@ -84,6 +85,7 @@ if true
         term1;
     
     J_theta_theta_symIntPart    = term2*conj(term2);
+    f_J_theta_theta             = matlabFunction(simplify(J_theta_theta_symIntPart), 'Vars', {[J_symVarVec]});
     %% J_tau_tau_symIntPart
     term3           = ...
         (alphaT*d) ...
@@ -91,11 +93,13 @@ if true
         term1;
     
     J_tau_tau_symIntPart    = (omega^2)*term3*conj(term3);
+    f_J_tau_tau             = matlabFunction(simplify(J_tau_tau_symIntPart), 'Vars', {[J_symVarVec]});
     %% J_theta_tau_symIntPart
     term4           = ...
         (1i*omega*alphaT*(A*d+B*betaV*exp(-1i*omega*tau))*alphaH*conj(d));
     
     J_theta_tau_symIntPart  = real(term4/term1);
+    f_J_theta_tau           = matlabFunction(simplify(J_theta_tau_symIntPart), 'Vars', {[J_symVarVec]});
 end
 
 %% prepare parameters grid
@@ -217,9 +221,10 @@ parfor outputID = 1 : numel(simOutData_CELL)
             J_symVarVec     =   [ D;        alphaV(:);      betaV(:);                           c;      targetRange;        theta   ];
             J_symVarValues  =   [ DVal;     alphaValues(:); curBackoffFactor*betaValues(:);     cVal;   RangeVal + curRErr; curTheta];
             %% J_theta_theta
-            curSymIntPart   = subs(J_theta_theta_symIntPart,J_symVarVec,J_symVarValues);
+            curSymIntPart       = subs(J_theta_theta_symIntPart,J_symVarVec,J_symVarValues);
             
-            symInptPartSpectum  = subs(curSymIntPart,omega,integralFreqVec);
+            symInptPartSpectum  = subs(curSymIntPart,omega,integralOmegaVec);           
+            %symInptPartSpectum  = cellfun(@(curOmega) f_J_theta_theta([J_symVarValues(:) ; curOmega]), num2cell(integralOmegaVec));
             integralResultVec   = symInptPartSpectum.*sSpectrumInterpulated_abs2;
             integralResult      = sum(integralResultVec);
             
@@ -232,7 +237,7 @@ parfor outputID = 1 : numel(simOutData_CELL)
             %% J_tau_tau
             curSymIntPart   = subs(J_tau_tau_symIntPart,J_symVarVec,J_symVarValues);
             
-            symInptPartSpectum  = subs(curSymIntPart,omega,integralFreqVec);
+            symInptPartSpectum  = subs(curSymIntPart,omega,integralOmegaVec);
             integralResultVec   = symInptPartSpectum.*sSpectrumInterpulated_abs2;
             integralResult      = sum(integralResultVec);
             
@@ -241,7 +246,7 @@ parfor outputID = 1 : numel(simOutData_CELL)
             %% J_theta_tau
             curSymIntPart       = subs(J_theta_tau_symIntPart,J_symVarVec,J_symVarValues);
             
-            symInptPartSpectum  = subs(curSymIntPart,omega,integralFreqVec);
+            symInptPartSpectum  = subs(curSymIntPart,omega,integralOmegaVec);
             integralResultVec   = symInptPartSpectum.*sSpectrumInterpulated_abs2;
             integralResult      = sum(integralResultVec);
             
