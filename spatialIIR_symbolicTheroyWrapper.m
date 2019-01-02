@@ -20,7 +20,12 @@ end
 try
     scriptFlags.crlbSimpleSim;
 catch
-    scriptFlags.crlbSimpleSim = 1;
+    scriptFlags.crlbSimpleSim = 0;
+end
+try
+    scriptFlags.beamwidthCalc
+catch
+    scriptFlags.beamwidthCalc = 1;
 end
 try
     nSensors = cfgIn.nSensors;
@@ -37,6 +42,9 @@ betaT               = transpose(betaV);
 betaH               = conj(betaT);
 syms                omega;
 assume(             omega, 'real');
+syms                deltaOmega;
+assume(             deltaOmega, 'real');
+omega0              = omega - deltaOmega;
 syms                targetRange;
 assume(             targetRange, 'real');
 syms                c;
@@ -54,6 +62,9 @@ sensorID_oneBased   = 1:nSensors;
 d                   = reshape(exp(-1i*omega*tauTheta*sensorID_zeroBased),[],1);
 dT                  = transpose(d);
 dH                  = conj(dT);
+d0                  = reshape(exp(-1i*omega0*tauTheta*sensorID_zeroBased),[],1);
+d0T                 = transpose(d0);
+d0H                 = conj(d0T);
 g                   = betaT*d*exp(-1i*omega*tau);
 A                   = -1i*omega*D*sin(theta)*diag(sensorID_zeroBased)/c;
 AT                  = transpose(A);
@@ -62,33 +73,33 @@ B                   = d*dT*A-A*d*dT;
 BT                  = transpose(B);
 BH                  = conj(BT);
 
-crlbVariables.nSensors              = nSensors;
-crlbVariables.alphaV                = alphaV;
-crlbVariables.alphaT                = alphaT;
-crlbVariables.alphaH                = alphaH;
-crlbVariables.betaV                 = betaV;
-crlbVariables.betaT                 = betaT;
-crlbVariables.betaH                 = betaH;
-crlbVariables.omega                 = omega;
-crlbVariables.tau                   = tau;
-crlbVariables.targetRange           = targetRange;
-crlbVariables.c                     = c;
-crlbVariables.D                     = D;
-crlbVariables.theta                 = theta;
-crlbVariables.sigmaX                = sigmaX;
-crlbVariables.tauTheta              = tauTheta;
-crlbVariables.sensorID_zeroBased    = sensorID_zeroBased;
-crlbVariables.sensorID_oneBased     = sensorID_oneBased;
-crlbVariables.d                     = d;
-crlbVariables.dT                    = dT;
-crlbVariables.dH                    = dH;
-crlbVariables.g                     = g;
-crlbVariables.A                     = A;
-crlbVariables.AT                    = AT;
-crlbVariables.AH                    = AH;
-crlbVariables.B                     = B;
-crlbVariables.BT                    = BT;
-crlbVariables.BH                    = BH;
+simVariables.nSensors              = nSensors;
+simVariables.alphaV                = alphaV;
+simVariables.alphaT                = alphaT;
+simVariables.alphaH                = alphaH;
+simVariables.betaV                 = betaV;
+simVariables.betaT                 = betaT;
+simVariables.betaH                 = betaH;
+simVariables.omega                 = omega;
+simVariables.tau                   = tau;
+simVariables.targetRange           = targetRange;
+simVariables.c                     = c;
+simVariables.D                     = D;
+simVariables.theta                 = theta;
+simVariables.sigmaX                = sigmaX;
+simVariables.tauTheta              = tauTheta;
+simVariables.sensorID_zeroBased    = sensorID_zeroBased;
+simVariables.sensorID_oneBased     = sensorID_oneBased;
+simVariables.d                     = d;
+simVariables.dT                    = dT;
+simVariables.dH                    = dH;
+simVariables.g                     = g;
+simVariables.A                     = A;
+simVariables.AT                    = AT;
+simVariables.AH                    = AH;
+simVariables.B                     = B;
+simVariables.BT                    = BT;
+simVariables.BH                    = BH;
 
 
 %% sub scripts
@@ -125,8 +136,8 @@ if scriptFlags.crlbSimpleSim
     crlbSimpleSimCfg.RangeVal                               = 1000;
     crlbSimpleSimCfg.DVal                                   = 0.01;
     crlbSimpleSimCfg.cVal                                   = 3e8;
-    crlbSimpleSimCfg.fSample                                = 20e9; 
-    crlbSimpleSimCfg.syncSigCfg.duration_SAMPLES            = 1024;    
+    crlbSimpleSimCfg.fSample                                = 20e9;
+    crlbSimpleSimCfg.syncSigCfg.duration_SAMPLES            = 1024;
     crlbSimpleSimCfg.integralNPoints                        = 128;
     crlbSimpleSimCfg.useSimplifiedSignal                    = 1;
     %% execute
@@ -140,7 +151,7 @@ if scriptFlags.crlbSimpleSim
     catch
         parpool('local',nWantedCores);
     end
-    crlbSimpleSim_output    = crlbSimpleSim(crlbVariables,crlbSimpleSimCfg);
+    crlbSimpleSim_output    = crlbSimpleSim(simVariables,crlbSimpleSimCfg);
     finaCfg                 = crlbSimpleSim_output.cfg;
     simplifiedSif_STR       = '';
     if crlbSimpleSimCfg.useSimplifiedSignal
@@ -158,5 +169,12 @@ if scriptFlags.crlbSimpleSim
     end
     savedFilePath           = fullfile(outputDir,savedFilename);
     save(savedFilePath,'crlbSimpleSim_output');
+end
+if scriptFlags.beamwidthCalc   
+    %% configure
+    beamwidthCalc_cfgIn.dummy   = [];
+    
+    %% execute
+    beamwidthCalc_output    = beamwidthCalc(simVariables,beamwidthCalc_cfgIn);    
 end
 end
