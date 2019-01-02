@@ -25,12 +25,17 @@ end
 try
     scriptFlags.beamwidthCalc
 catch
-    scriptFlags.beamwidthCalc = 1;
+    scriptFlags.beamwidthCalc = 0;
+end
+try
+    scriptFlags.tauErrorEffect
+catch
+    scriptFlags.tauErrorEffect = 1;
 end
 try
     nSensors = cfgIn.nSensors;
 catch
-    nSensors = 3;
+    nSensors = 5;
 end
 
 %% symbolics
@@ -176,5 +181,12 @@ if scriptFlags.beamwidthCalc
     
     %% execute
     beamwidthCalc_output    = beamwidthCalc(simVariables,beamwidthCalc_cfgIn);    
+end
+if scriptFlags.tauErrorEffect   
+    %% configure
+    tauErrorEffect_cfgIn.dummy   = [];
+    
+    %% execute
+    tauErrorEffect_output    = tauErrorEffect(simVariables,tauErrorEffect_cfgIn);    
 end
 end
