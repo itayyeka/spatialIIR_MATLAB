@@ -27,13 +27,14 @@ for cfgFieldID = 1 : numel(cfgFields)
     finalCfg.(curCfgField) = eval([curCfgField ';']);
 end
 
-simOutput       = [];
-simOutput.cfg   = finalCfg;
+simOut       = [];
+simOut.cfg   = finalCfg;
 structToVariables(simVars);
 
 %% calculate
-nTheta              = 1000; 
-nSensors            = length(d); 
+nTheta              = 1000;
+nSensors            = length(d);
+order               = nSensors - 1;
 symVarVec           = [D,       c,      omega       ];
 symVarValues        = [DVal,    cVal,   2*pi*fSample];
 d0                  = subs(d(:),symVarVec,symVarValues);
@@ -47,61 +48,86 @@ noFeedbackSimAbs    = abs(noFeedbackSim);
 % figure; plot(noFeedbackSimAbs(:,1));
 % figure; surf(db(noFeedbackSimAbs));
 d3dBIdxVec_noFeedback   = abs(cellfun(@(rowID) f_findFirst3Db(circshift(transpose(noFeedbackSimAbs(rowID,:)),rowID),0), num2cell(1:size(noFeedbackSimAbs,1))));
-beamwidth_noFeedback    = thetaVec(d3dBIdxVec_noFeedback);
+
+simOut.beamwidth_noFeedback     = thetaVec(d3dBIdxVec_noFeedback);
 
 % figure; plot(beamwidth_noFeedback);
 syms x;
-feedbackSim_abs         = cell2mat(cellfun(@(doa) f_calc_iir_repsonse(fSample*DVal*cos(doa)/cVal,x,d0_MAT), num2cell(thetaVec), 'UniformOutput', false));
-d3dBIdxVec_withFeedback = cellfun(@(colID) f_findFirst3Db(circshift(feedbackSim_abs(:,colID),colID-1),0), num2cell(1:size(feedbackSim_abs,1)));
-beamwidth_withFeedback  = thetaVec(d3dBIdxVec_withFeedback);
+warning('off');
 
-figure; plot([beamwidth_noFeedback(:) beamwidth_withFeedback(:)]);
-legend({'no feedback' 'with feedback'});
+rPoleVec    = linspace(0.7,0.95,5);
+for rPoleID = 1:numel(rPoleVec)
+    feedbackSim_abs         = cellfun(@(doa) ...
+        f_calc_iir_repsonse( ...
+        order,              ... order,
+        fSample*DVal/cVal,  ... spatialFreq,
+        rPoleVec(rPoleID),  ... rPole,
+        doa                 ... thetaPole
+        ), num2cell(thetaVec), 'UniformOutput', false);
+    warning('on');
+    
+    simOut.beamwidth_withFeedback(:,rPoleID)   = ...
+        reshape(cellfun(@(thetaID) f_findFirst3Db(feedbackSim_abs{thetaID},1,thetaVec(thetaID)), num2cell(1:length(thetaVec))),[],1);
+    
+    % figure; plot(thetaVec/pi,simOut.beamwidth_withFeedback(:,rPoleID));
+    
+    r                   = rPoleVec(rPoleID);
+    cosDelta            = (1-((1-r)^2)*2^(1/nSensors)+r^2)/(2*r);
+    deltaTheta          = acos(cosDelta);
+    cosThetaB           = -(deltaTheta*cVal/(2*pi*fSample*DVal)) + cos(thetaVec);
+    
+    simOut.beamwidth_withFeedback_analytic  = acos(cosThetaB); 
 end
 
-function [first3DbID] = f_findFirst3Db(responseVec,plotEnable)
-responseVec_norm    = responseVec/responseVec(1);
-responseVec_norm    = responseVec;
-first3DbID          = find(responseVec_norm<0.5,1);
+simOut.cfg.rPoleVec = rPoleVec;
+% figure; plot([beamwidth_noFeedback(:) beamwidth_withFeedback(:)]);
+% legend({'no feedback' 'with feedback'});
+end
+
+function [beamwidth] = f_findFirst3Db(responseVec,plotEnable,curTheta)
+if isnumeric(responseVec)
+    responseVec_norm    = responseVec/responseVec(1);
+    responseVec_norm    = responseVec;
+    first3DbID          = find(responseVec_norm<0.5,1);
+    beamwidth           = first3DbID;
+else
+    thetaVec            = linspace(curTheta,2*pi+curTheta,1000);
+    maxResponseAbs      = abs(responseVec(curTheta));
+    f_responseAdjusted  = @(theta) -0.5+abs(responseVec(theta))/maxResponseAbs;
+    resposnceValVec     = f_responseAdjusted(thetaVec);
+    %     figure;plot(db(resposnceValVec));
+    thetaLim            = find(resposnceValVec<0,1);
+    %     figure; plot([thetaVec(thetaLim-1) thetaVec(thetaLim)],f_responseAdjusted([thetaVec(thetaLim-1) thetaVec(thetaLim)]));
+    first3DbID          = fminbnd(@(theta) f_responseAdjusted(theta)^2, thetaVec(thetaLim-1), thetaVec(thetaLim));
+    beamwidth           = first3DbID - curTheta;
+end
 if isempty(first3DbID)
     first3DbID = 1;
 end
 try
     plotEnable;
 catch
-    plotEnable  = 0; 
+    plotEnable  = 0;
 end
 if plotEnable %% DEBUG
-    %% DEUBG
-    close all;
-    thetaVec    = linspace(0,2,length(responseVec_norm));
-    figure; plot(thetaVec,responseVec_norm);
-    disp(['last index was ' num2str(first3DbID)]);
+    if isnumeric(responseVec)
+        %% DEUBG
+        close all;
+        thetaVec    = linspace(0,2,length(responseVec_norm));
+        figure; plot(thetaVec,responseVec_norm);
+        disp(['last index was ' num2str(first3DbID)]);
+    end
 end
 end
 
-function [response] = f_calc_iir_repsonse(spatialFreq,x,d0_MAT)
-order       = size(d0_MAT,1)-1;
-num         = (x-exp(-1i*2*pi*spatialFreq))^order;
-numCoeffs   = eval(coeffs(num,x));
-a           = 0.42;
-den         = (x-a*exp(-1i*2*pi*spatialFreq))^order;
-denCoeffs   = eval(coeffs(den,x));
-
-maxCoefAbs  = max(abs([numCoeffs(:) ; denCoeffs(:)]));
-
-numCoeffs_norm = numCoeffs/maxCoefAbs;
-denCoeffs_norm = denCoeffs/maxCoefAbs;
-
-response =  ...
-    abs(...
-    reshape(...
-    (reshape(denCoeffs_norm,1,[])*d0_MAT) ...
+function [f_response] = f_calc_iir_repsonse(order,spatialFreq,rPole,thetaPole)
+f_response = @(theta) ...
+    1 ...
     ./ ...
-    (reshape(numCoeffs_norm,1,[])*d0_MAT) ...
-    ,[],1) ...
-    );
-% close all;
-% figure;plot(db(abs(response)));
-% fvtool(numCoeffs,denCoeffs)
+    (...
+    exp(1i*2*pi*spatialFreq*cos(theta)) ...
+    - ...
+    rPole*exp(1i*2*pi*spatialFreq*cos(thetaPole)) ...
+    ).^order ...
+    ;
 end
