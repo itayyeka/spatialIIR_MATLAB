@@ -5,7 +5,7 @@ clc;
 
 if true
     %% numeric validation
-    if true
+    if false
         f_fullExpr  = @(N,r,x,t) ...
             (1/(1-r)^2) ...
             *...
@@ -97,7 +97,7 @@ if true
         end
     end
     %% symbolic calc
-    if false
+    if true
         %% symbolic def
         syms x;
         syms N;
@@ -190,6 +190,32 @@ if true
             
             numDiffVal = subs(curNum,t,0);
             denDiffVal = subs(curDen,t,0);
+            
+            nIter = nIter + 1;
+        end
+        
+        lim_d_dt2 = simplify((numDiffVal/denDiffVal));
+        
+        %% d/dxdt
+        origFun_d_dxdt  = diff(origFun_d_dt,x);
+        
+        syms r w;
+        
+        origFun_d_dxdt_rw   = subs(origFun_d_dxdt,{x t}, {r*cos(w) r*sin(w)});
+        
+        [num,den]       = numden(origFun_d_dxdt_rw);
+        
+        curNum      = num;
+        curDen      = den;
+        numDiffVal  = subs(curNum,r,0);
+        denDiffVal  = subs(curDen,r,0);
+        
+        nIter       = 0;
+        while numDiffVal == 0 && denDiffVal == 0
+            curNum      = diff(curNum,r);
+            curDen      = diff(curDen,r);
+            numDiffVal  = subs(curNum,r,0);
+            denDiffVal  = subs(curDen,r,0);
             
             nIter = nIter + 1;
         end
