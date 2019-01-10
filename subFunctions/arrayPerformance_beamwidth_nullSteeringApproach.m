@@ -5,18 +5,28 @@ clc;
 
 if true
     %% numeric validation
-    if false
+    if true
         f_fullExpr  = @(N,r,x,t) ...
             (1/(1-r)^2) ...
             *...
             (...
-            ((N./f_D(N,x)).^2) - (2*r*N*cos(t-((N-1)*x/2))./f_D(N,x)) + r^2 ...
+            ((N./f_D(N,x/2)).^2) - (2*r*N*cos(t-((N-1)*x/2))./f_D(N,x/2)) + r^2 ...
             );
         
-        f_approxExpr    = @(N,r,x,t) 1+((1/(1-r)^2)).*((1/12)*(N-1)*((4-r)*N-3)*(x.^2) + r*(t^2));
+        f_approxExpr    = @(N,r,x,t) ...
+            1 ...
+            +...
+            (1/((1-r)^2))* ...
+            (...
+            ((1/12)*(N-1)*((1+2*r)*N-4*r+1))*(x.^2) ...
+            + ...
+            r*(t^2) ...
+            - ...
+            r*(N-1).*x.*t ...
+            );
         
         nVec    = 4:8;% : 15;
-        phVec   = linspace(0,0.1,100);
+        phVec   = linspace(0,.2,100);
         tVec    = phVec;
         rVec    = 0.9 : 0.01 : 0.99;
         
@@ -105,8 +115,8 @@ if true
         syms t;
         
         origFun     = ...
-            ((N*sin(x)/sin(N*x))^2) ...
-            -2*r*cos(t-((N-1)*x/2))*N*sin(x)/sin(N*x) ...
+            ((N*sin(x/2)/sin(N*x/2))^2) ...
+            -2*N*r*cos(t-((N-1)*x/2))*sin(x/2)/sin(N*x/2) ...
             ;
         %% d/dx
         origFun_d_dx    = diff(origFun,x);
@@ -194,33 +204,52 @@ if true
             nIter = nIter + 1;
         end
         
-        lim_d_dt2 = simplify((numDiffVal/denDiffVal));
+        lim_d_dt2_fx = simplify((numDiffVal/denDiffVal));
         
-        %% d/dxdt
-        origFun_d_dxdt  = diff(origFun_d_dt,x);
-        
-        syms r w;
-        
-        origFun_d_dxdt_rw   = subs(origFun_d_dxdt,{x t}, {r*cos(w) r*sin(w)});
-        
-        [num,den]       = numden(origFun_d_dxdt_rw);
+        [num,den]       = numden(lim_d_dt2_fx);
         
         curNum      = num;
         curDen      = den;
-        numDiffVal  = subs(curNum,r,0);
-        denDiffVal  = subs(curDen,r,0);
+        numDiffVal  = subs(curNum,x,0);
+        denDiffVal  = subs(curDen,x,0);
         
         nIter       = 0;
         while numDiffVal == 0 && denDiffVal == 0
-            curNum      = diff(curNum,r);
-            curDen      = diff(curDen,r);
-            numDiffVal  = subs(curNum,r,0);
-            denDiffVal  = subs(curDen,r,0);
+            curNum = diff(curNum,x);
+            curDen = diff(curDen,x);
+            
+            numDiffVal = subs(curNum,x,0);
+            denDiffVal = subs(curDen,x,0);
             
             nIter = nIter + 1;
         end
         
         lim_d_dt2 = simplify((numDiffVal/denDiffVal));
+        %% d/dxdt
+        origFun_d_dxdt  = diff(origFun_d_dt,x);
+        
+        syms R w;
+        
+        origFun_d_dxdt_rw   = subs(origFun_d_dxdt,{x t}, {R*cos(w) R*sin(w)});
+        
+        [num,den]       = numden(origFun_d_dxdt_rw);
+        
+        curNum      = num;
+        curDen      = den;
+        numDiffVal  = subs(curNum,R,0);
+        denDiffVal  = subs(curDen,R,0);
+        
+        nIter       = 0;
+        while numDiffVal == 0 && denDiffVal == 0
+            curNum      = diff(curNum,R);
+            curDen      = diff(curDen,R);
+            numDiffVal  = subs(curNum,R,0);
+            denDiffVal  = subs(curDen,R,0);
+            
+            nIter = nIter + 1;
+        end
+        
+        lim_d_dxdt = simplify((numDiffVal/denDiffVal));
     end
 end
 
