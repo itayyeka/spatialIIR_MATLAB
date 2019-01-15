@@ -5,197 +5,114 @@ clc;
 
 if true
     %% two freq approach
-    if false
+    if true
         %% symbolics
-        syms N f DF DU t d c tS DT r positive;
-        p       = pS + DP;
-        pE      = d*(cos(p)-cos(pS))/c;
-        Dp1     = w*pE;
-        Dp2     = (w+dW)*pE;
-        t       = tS + DT;
+        syms N f DF u t r positive;
         
-        %% generating the full expression
-        a1d1    = (1/N)*(1-exp(1i*N*Dp1))/(1-exp(1i*Dp1));
-        a2d2    = (1/N)*(1-exp(1i*N*Dp2))/(1-exp(1i*Dp2));
-        b1d1    = (-1/(r*N))*(1-exp(1i*N*Dp1))/(1-exp(1i*Dp1));
-        b2d2    = (1/(r*N))*((1-exp(1i*N*Dp2))/(1-exp(1i*Dp2)))*exp(-1i*dW*tS);
+        f2 = f+DF;
+        DU = u*(1+DF/f);
+        u2 = u+DU;
         
-        transferFunction     = ...
-            (a1d1*conj(a2d2)) ...
-            / ...
-            (1-(conj(b2d2)*exp(1i*(w+dW)*t))-(b1d1*exp(-1i*w*t))+b1d1*conj(b2d2)*exp(-1i*dW*t));
+        %% generating basic terms
+        a1d1    = (r/N)*exp(1i*(u*(N-1)/2))*sin(N*u/2)/sin(u/2);
+        a2d2    = (r/N)*exp(1i*(u2*(N-1)/2))*sin(N*u2/2)/sin(u2/2);
+        b1d1    = (-r/N)*exp(1i*(u*(N-1)/2))*sin(N*u/2)/sin(u/2);
+        b2d2    = (r/N)*exp(1i*((u2*(N-1)/2)-2*pi*DF*t))*sin(N*u2/2)/sin(u2/2);
         
-        tfAbs2  =  simplify(transferFunction*conj(transferFunction));
+        %% full expression transfer function
+        hNum    = (a1d1*conj(a2d2));
+        hDen    = ((1-b1d1*exp(-1i*2*pi*f*t))*(1-conj(b2d2)*exp(1i*2*pi*f2*t)));
         
-        %% tfAbs2_IDEAL
-        origFun_tfAbs2_IDEAL    = tfAbs2;
-        [num,den]               = numden(origFun_tfAbs2_IDEAL);
-        
-        curNum      = num;
-        curDen      = den;
-        numDiffVal  = subs(curNum,DP,0);
-        denDiffVal  = subs(curDen,DP,0);
-        
-        nIter       = 0;
-        while numDiffVal == 0 && denDiffVal == 0
-            curNum = diff(curNum,DP);
-            curDen = diff(curDen,DP);
-            
-            numDiffVal = subs(curNum,DP,0);
-            denDiffVal = subs(curDen,DP,0);
-            
-            nIter = nIter + 1;
+        hOrig       = hNum/hDen;
+        curExpr     = hOrig;
+        foundExpr   = 0;
+        while ~foundExpr
+            [num,den]   = numden(curExpr);
+            try
+                num         = subs(num, u, 0);
+                den         = subs(den, u, 0);
+                if ~(den==0)
+                    curExpr     = num/den;
+                    foundExpr   = 1;
+                else
+                    [num,den]   = numden(curExpr);
+                    num         = diff(num, u);
+                    den         = diff(den, u);
+                    curExpr     = num/den;
+                end
+            catch
+                num         = diff(num, u);
+                den         = diff(den, u);
+                curExpr     = num/den;
+            end
         end
         
-        lim_tfAbs2      = (numDiffVal/denDiffVal);
-        tfAbs2_IDEAL    = simplify(subs(lim_tfAbs2, DT, 0));
+        hIdeal  = subs(curExpr,t,0);
+        hRel    = hOrig/hIdeal;
+        hAbs    = simplify(hIdeal*conj(hIdeal));
+        hRelAbs = hRel*conj(hRel);
         
-        %% tf ratio
-        origFun_tfRatio     = tfAbs2_IDEAL/tfAbs2;
-        [num,den]           = numden(origFun_tfRatio);
-        
-        curNum      = num;
-        curDen      = den;
-        numDiffVal  = subs(curNum,DP,0);
-        denDiffVal  = subs(curDen,DP,0);
-        
-        nIter       = 0;
-        while numDiffVal == 0 && denDiffVal == 0
-            curNum = diff(curNum,DP);
-            curDen = diff(curDen,DP);
+        %% sanity
+        if false
+            curExpr     = hRelAbs;
+            foundExpr   = 0;
+            while ~foundExpr
+                [num,den]   = numden(curExpr);
+                try
+                    num         = subs(num, u, 0);
+                    den         = subs(den, u, 0);
+                    if ~(den==0)
+                        curExpr     = num/den;
+                        foundExpr   = 1;
+                    else
+                        [num,den]   = numden(curExpr);
+                        num         = diff(num, u);
+                        den         = diff(den, u);
+                        curExpr     = num/den;
+                    end
+                catch
+                    num         = diff(num, u);
+                    den         = diff(den, u);
+                    curExpr     = num/den;
+                end
+            end
             
-            numDiffVal = subs(curNum,DP,0);
-            denDiffVal = subs(curDen,DP,0);
-            
-            nIter = nIter + 1;
+            hSanity     = subs(curExpr,t,0);
+            assert(eval(hSanity)==1,'Should be 1 when in ideal scenario');
         end
-        
-        lim_tfRatio     = numDiffVal/denDiffVal;
-        tfRatio_IDEAL   = simplify(subs(lim_tfRatio, DT, 0));
-        
-        %% d/dDP
-        origFun_tfRatio_dDP = diff(origFun_tfRatio,DP);
-        [num,den]           = numden(origFun_tfRatio_dDP);
-        
-        curNum      = num;
-        curDen      = den;
-        numDiffVal  = subs(curNum,DP,0);
-        denDiffVal  = subs(curDen,DP,0);
-        
-        nIter       = 0;
-        while numDiffVal == 0 && denDiffVal == 0
-            curNum = diff(curNum,DP);
-            curDen = diff(curDen,DP);
-            
-            numDiffVal = subs(curNum,DP,0);
-            denDiffVal = subs(curDen,DP,0);
-            
-            nIter = nIter + 1;
+        %% d/du
+        curExpr         = diff(hRelAbs,u);
+        foundExpr       = 0;
+        while ~foundExpr
+            [num,den]   = numden(curExpr);
+            try
+                num         = subs(num, u, 0);
+                den         = subs(den, u, 0);
+                if ~(den==0)
+                    curExpr     = num/den;
+                    foundExpr   = 1;
+                else
+                    [num,den]   = numden(curExpr);
+                    num         = diff(num, u);
+                    den         = diff(den, u);
+                    curExpr     = num/den;
+                end
+            catch
+                num         = diff(num, u);
+                den         = diff(den, u);
+                curExpr     = num/den;
+            end
         end
-        
-        lim_tfRatio_dDP     = simplify(subs(numDiffVal/denDiffVal,{DT pS},{0 pi/4}));
-        
-        %% d/dp2
-        origFun_tfRatio_dDP2    = diff(origFun_tfRatio_dDP,DP);
-        [num,den]               = numden(origFun_tfRatio_dDP2);
-        
-        curNum      = num;
-        curDen      = den;
-        numDiffVal  = subs(curNum,DP,0);
-        denDiffVal  = subs(curDen,DP,0);
-        
-        nIter       = 0;
-        while numDiffVal == 0 && denDiffVal == 0
-            curNum = diff(curNum,DP);
-            curDen = diff(curDen,DP);
-            
-            numDiffVal = subs(curNum,DP,0);
-            denDiffVal = subs(curDen,DP,0);
-            
-            nIter = nIter + 1;
-        end
-        
-        lim_tfRatio_dDP2    = (numDiffVal/denDiffVal);
-        
-        %% d/dDT
-        origFun_tfRatio_dDT = diff(origFun_tfRatio,DT);
-        [num,den]           = numden(origFun_tfRatio_dDT);
-        
-        curNum      = num;
-        curDen      = den;
-        numDiffVal  = subs(curNum, DT, 0);
-        denDiffVal  = subs(curDen, DT, 0);
-        
-        nIter       = 0;
-        while numDiffVal == 0 && denDiffVal == 0
-            curNum = diff(curNum,DT);
-            curDen = diff(curDen,DT);
-            
-            numDiffVal = subs(curNum, DT, 0);
-            denDiffVal = subs(curDen, DT, 0);
-            
-            nIter = nIter + 1;
-        end
-        
-        lim_tfRatio_dDT  = simplify(numDiffVal/denDiffVal);
-        
-        %% d/dDT
-        origFun_tfRatio_dDT2    = diff(origFun_tfRatio,DT);
-        [num,den]               = numden(origFun_tfRatio_dDT2);
-        
-        curNum      = num;
-        curDen      = den;
-        numDiffVal  = subs(curNum, DT, 0);
-        denDiffVal  = subs(curDen, DT, 0);
-        
-        nIter       = 0;
-        while numDiffVal == 0 && denDiffVal == 0
-            curNum = diff(curNum,DT);
-            curDen = diff(curDen,DT);
-            
-            numDiffVal = subs(curNum, DT, 0);
-            denDiffVal = subs(curDen, DT, 0);
-            
-            nIter = nIter + 1;
-        end
-        
-        lim_tfRatio_dDT2 = simplify(numDiffVal/denDiffVal);
-        
-        %% d/dDTdDP
-        syms R;
-        syms O;
-        
-        origFun_tfRatio_RO  = subs(origFun_tfRatio,{DP DT}, {R*cos(O) R*sin(O)});
-        
-        origFun_tfRatio_dDPdDT  = diff(origFun_tfRatio_RO,R);
-        [num,den]               = numden(origFun_tfRatio_dDPdDT);
-        
-        curNum      = num;
-        curDen      = den;
-        numDiffVal  = subs(curNum, R, 0);
-        denDiffVal  = subs(curDen, R, 0);
-        
-        nIter       = 0;
-        while numDiffVal == 0 && denDiffVal == 0
-            curNum = diff(curNum,R);
-            curDen = diff(curDen,R);
-            
-            numDiffVal = subs(curNum, R, 0);
-            denDiffVal = subs(curDen, R, 0);
-            
-            nIter = nIter + 1;
-        end
-        
-        lim_tfRatio_dDPdDT = simplify(numDiffVal/denDiffVal);
+        hRelAbs_d_du = subs(curExpr,t,0);
     end
     
     %% classic ULA beamwidth
-%     close all;
-%     load census;
-%     f=fit(cdate,pop,'poly2')
-%     plot(f,cdate,pop)
+    %     close all;
+    %     load census;
+    %     f=fit(cdate,pop,'poly2')
+    %     plot(f,cdate,pop)
     
-    if true
+    if false
         syms p;
         syms N;
         
@@ -319,7 +236,7 @@ if true
             pretty(y)
             
             
-            y_HPBW = matlabFunction(subs(y,c,c_HPBW));            
+            y_HPBW = matlabFunction(subs(y,c,c_HPBW));
             
             figure;plot(nVec_HPBW.*sqrt(y_HPBW(nVec_HPBW)));
         end
@@ -360,7 +277,7 @@ if true
     end
     
     %% numeric validation
-    if true
+    if false
         f_fullExpr  = @(N,r,x,t) ...
             (1/(1-r)^2) ...
             *...
@@ -463,7 +380,7 @@ if true
     end
     
     %% symbolic calc
-    if true
+    if false
         %% symbolic def
         syms x;
         syms N;
