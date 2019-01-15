@@ -81,7 +81,35 @@ if true
             assert(eval(hSanity)==1,'Should be 1 when in ideal scenario');
         end
         %% d/du
-        curExpr         = diff(hRelAbs,u);
+        hRelAbs_d_du    = diff(hRelAbs,u);
+        if false            
+            curExpr         = hRelAbs_d_du;
+            foundExpr       = 0;
+            while ~foundExpr
+                [num,den]   = numden(curExpr);
+                try
+                    num         = subs(num, u, 0);
+                    den         = subs(den, u, 0);
+                    if ~(den==0)
+                        curExpr     = num/den;
+                        foundExpr   = 1;
+                    else
+                        [num,den]   = numden(curExpr);
+                        num         = diff(num, u);
+                        den         = diff(den, u);
+                        curExpr     = num/den;
+                    end
+                catch
+                    num         = diff(num, u);
+                    den         = diff(den, u);
+                    curExpr     = num/den;
+                end
+            end
+            lim_hRelAbs_d_du = subs(curExpr,t,0);
+        end
+        %% d/du2
+        hRelAbs_d_du2   = diff(hRelAbs_d_du,u);
+        curExpr         = hRelAbs_d_du2;
         foundExpr       = 0;
         while ~foundExpr
             [num,den]   = numden(curExpr);
@@ -103,7 +131,7 @@ if true
                 curExpr     = num/den;
             end
         end
-        hRelAbs_d_du = subs(curExpr,t,0);
+        lim_hRelAbs_d_du2 = subs(curExpr,t,0);
     end
     
     %% classic ULA beamwidth
