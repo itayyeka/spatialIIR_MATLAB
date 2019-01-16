@@ -14,17 +14,24 @@ if true
         u2 = u+DU;
         
         %% generating basic terms
-        a1d1    = (r/N)*exp(1i*(u*(N-1)/2))*sin(N*u/2)/sin(u/2);
-        a2d2    = (r/N)*exp(1i*(u2*(N-1)/2))*sin(N*u2/2)/sin(u2/2);
-        b1d1    = (-r/N)*exp(1i*(u*(N-1)/2))*sin(N*u/2)/sin(u/2);
-        b2d2    = (r/N)*exp(1i*((u2*(N-1)/2)-2*pi*DF*t))*sin(N*u2/2)/sin(u2/2);
-        
+        if true
+            a1d1    = (r/N)*exp(1i*(u*(N-1)/2))*sin(N*u/2)/sin(u/2);
+            a2d2    = (r/N)*exp(1i*(u2*(N-1)/2))*sin(N*u2/2)/sin(u2/2);
+            b1d1    = (-r/N)*exp(1i*(u*(N-1)/2))*sin(N*u/2)/sin(u/2);
+            b2d2    = (r/N)*exp(1i*((u2*(N-1)/2)-2*pi*DF*t))*sin(N*u2/2)/sin(u2/2);
+        else
+            a1d1    = (r/N)*(1-exp(1i*N*u))/(1-exp(1i*u));
+            a2d2    = (r/N)*(1-exp(1i*N*u2))/(1-exp(1i*u2));
+            b1d1    = (-r/N)*(1-exp(1i*N*u))/(1-exp(1i*u));
+            b2d2    = (r/N)*exp(-1i*2*pi*DF*t)*(1-exp(1i*N*u2))/(1-exp(1i*u2));
+        end
         %% full expression transfer function
         hNum    = (a1d1*conj(a2d2));
         hDen    = ((1-b1d1*exp(-1i*2*pi*f*t))*(1-conj(b2d2)*exp(1i*2*pi*f2*t)));
         
-        hOrig       = hNum/hDen;
-        curExpr     = hOrig;
+        hOrig       = simplify(hNum/hDen);
+        
+        curExpr     = subs(hOrig, t, 0);
         foundExpr   = 0;
         while ~foundExpr
             [num,den]   = numden(curExpr);
@@ -47,91 +54,157 @@ if true
             end
         end
         
-        hIdeal  = subs(curExpr,t,0);
-        hRel    = hOrig/hIdeal;
-        hAbs    = simplify(hIdeal*conj(hIdeal));
-        hRelAbs = hRel*conj(hRel);
+        hIdeal      = simplify(curExpr);
+        hIdealAbs   = simplify(hIdeal*conj(hIdeal));
+        hRel        = hOrig/hIdeal;
+        hRelAbs     = hRel*conj(hRel);
+        hOrigAbs    = hOrig*conj(hOrig);
         
         %% sanity
         if false
-            curExpr     = hRelAbs;
+            curExpr     = simplify(subs(hRelAbs, t, 0));
             foundExpr   = 0;
+            [num,den]   = numden(curExpr);
             while ~foundExpr
-                [num,den]   = numden(curExpr);
                 try
-                    num         = subs(num, u, 0);
-                    den         = subs(den, u, 0);
-                    if ~(den==0)
-                        curExpr     = num/den;
+                    numVal  = subs(num, u, 0);
+                    denVal  = subs(den, u, 0);
+                    if ~(denVal==0)
                         foundExpr   = 1;
                     else
-                        [num,den]   = numden(curExpr);
                         num         = diff(num, u);
                         den         = diff(den, u);
-                        curExpr     = num/den;
                     end
                 catch
                     num         = diff(num, u);
                     den         = diff(den, u);
-                    curExpr     = num/den;
                 end
             end
-            
-            hSanity     = subs(curExpr,t,0);
-            assert(eval(hSanity)==1,'Should be 1 when in ideal scenario');
+            curExpr     = numVal/denVal;
+            lim_hRelAbs = simplify(curExpr)
+            assert(eval(lim_hRelAbs)==1,'Should be 1 when in ideal scenario');
         end
         %% d/du
-        hRelAbs_d_du    = diff(hRelAbs,u);
-        if false            
-            curExpr         = hRelAbs_d_du;
-            foundExpr       = 0;
+        hOrigAbs_d_du   = simplify(subs(diff(hOrigAbs,u),t,0));
+        if false
+            curExpr     = hOrigAbs_d_du;
+            foundExpr   = 0;
+            [num,den]   = numden(curExpr);
             while ~foundExpr
-                [num,den]   = numden(curExpr);
                 try
-                    num         = subs(num, u, 0);
-                    den         = subs(den, u, 0);
-                    if ~(den==0)
-                        curExpr     = num/den;
+                    numVal  = subs(num, u, 0);
+                    denVal  = subs(den, u, 0);
+                    if ~(denVal==0)
                         foundExpr   = 1;
                     else
-                        [num,den]   = numden(curExpr);
                         num         = diff(num, u);
                         den         = diff(den, u);
-                        curExpr     = num/den;
                     end
                 catch
                     num         = diff(num, u);
                     den         = diff(den, u);
-                    curExpr     = num/den;
                 end
             end
-            lim_hRelAbs_d_du = subs(curExpr,t,0);
+            curExpr             = simplify(numVal/denVal);
+            lim_hOrigAbs_d_du   = curExpr
         end
         %% d/du2
-        hRelAbs_d_du2   = diff(hRelAbs_d_du,u);
-        curExpr         = hRelAbs_d_du2;
-        foundExpr       = 0;
-        while ~foundExpr
+        hOrigAbs_d_du2  = simplify(subs(diff(hOrigAbs_d_du,u),t,0));
+        if false
+            curExpr     = hOrigAbs_d_du2;
+            foundExpr   = 0;
             [num,den]   = numden(curExpr);
-            try
-                num         = subs(num, u, 0);
-                den         = subs(den, u, 0);
-                if ~(den==0)
-                    curExpr     = num/den;
-                    foundExpr   = 1;
-                else
-                    [num,den]   = numden(curExpr);
+            while ~foundExpr
+                try
+                    numVal  = subs(num, u, 0);
+                    denVal  = subs(den, u, 0);
+                    if ~(denVal==0)
+                        foundExpr   = 1;
+                    else
+                        num         = diff(num, u);
+                        den         = diff(den, u);
+                    end
+                catch
                     num         = diff(num, u);
                     den         = diff(den, u);
-                    curExpr     = num/den;
                 end
-            catch
-                num         = diff(num, u);
-                den         = diff(den, u);
-                curExpr     = num/den;
             end
+            curExpr             = simplify(numVal/denVal);
+            lim_hOrigAbs_d_du2  = curExpr
         end
-        lim_hRelAbs_d_du2 = subs(curExpr,t,0);
+        %% d/dt
+        hOrigAbs_d_dt   = simplify(subs(diff(hOrigAbs,t),t,0));
+        if false
+            curExpr     = hOrigAbs_d_dt;
+            foundExpr   = 0;
+            [num,den]   = numden(curExpr);
+            while ~foundExpr
+                try
+                    numVal  = subs(num, u, 0);
+                    denVal  = subs(den, u, 0);
+                    if ~(denVal==0)
+                        foundExpr   = 1;
+                    else
+                        num         = diff(num, u);
+                        den         = diff(den, u);
+                    end
+                catch
+                    num         = diff(num, u);
+                    den         = diff(den, u);
+                end
+            end
+            curExpr             = simplify(numVal/denVal);
+            lim_hOrigAbs_d_dt   = curExpr
+        end
+        %% d/dt2
+        hOrigAbs_d_dt2  = simplify(subs(diff(hOrigAbs_d_dt,t),t,0));
+        if false
+            curExpr     = hOrigAbs_d_dt2;
+            foundExpr   = 0;
+            [num,den]   = numden(curExpr);
+            while ~foundExpr
+                try
+                    numVal  = subs(num, u, 0);
+                    denVal  = subs(den, u, 0);
+                    if ~(denVal==0)
+                        foundExpr   = 1;
+                    else
+                        num         = diff(num, u);
+                        den         = diff(den, u);
+                    end
+                catch
+                    num         = diff(num, u);
+                    den         = diff(den, u);
+                end
+            end
+            curExpr             = simplify(numVal/denVal);
+            lim_hOrigAbs_d_dt2  = curExpr
+        end
+        %% d/dt2
+        syms R w positive;
+        hOrigAbs_d_dudt  = simplify(subs(diff(hOrigAbs_d_dt,u),{u t},{R*cos(w) R*sin(w)}));
+        if false
+            curExpr     = hOrigAbs_d_dudt;
+            foundExpr   = 0;
+            [num,den]   = numden(curExpr);
+            while ~foundExpr
+                try
+                    numVal  = subs(num, R, 0);
+                    denVal  = subs(den, R, 0);
+                    if ~(denVal==0)
+                        foundExpr   = 1;
+                    else
+                        num         = diff(num, R);
+                        den         = diff(den, R);
+                    end
+                catch
+                    num         = diff(num, R);
+                    den         = diff(den, R);
+                end
+            end
+            curExpr             = simplify(numVal/denVal);
+            lim_hOrigAbs_d_dudt = curExpr
+        end
     end
     
     %% classic ULA beamwidth
