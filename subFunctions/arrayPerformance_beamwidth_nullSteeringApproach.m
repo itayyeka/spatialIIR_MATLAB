@@ -690,6 +690,7 @@ if true
             approxResult        = zeros(nVal_DT,nVal_DU,nVal_N,length(rVec));
             approxResult_noTs   = zeros(nVal_DT,nVal_DU,nVal_N,length(rVec));
             rootMat             = zeros(nVal_N,length(rVec));
+            rootMat_fminbnd     = zeros(nVal_N,length(rVec));
             symVarValues        = zeros(7,1);
             
             %[DT, N, c, r, ts, w, gs]
@@ -732,10 +733,13 @@ if true
                     cDU8            = (nchoosek(8,0)/factorial(8))*(0);
                     cVec6           = [cDU6 cDU4 cDU2 1-0.5]; % compare to 0.5
                     rootVec6        = roots(cVec6);
-                    curRoot6        = sqrt(rootVec6(cellfun(@isreal,(num2cell(rootVec6)))));
-                    curRoot         = curRoot6;
+                    curRoot6        = sqrt(rootVec6(cellfun(@isreal,(num2cell(rootVec6)))));                 
+                    f_curBp         = @(pVec) (f_hAbs2Rel(symVarValues,pVec(:))-0.5).^2;
+                    rootFMinBnd     = fminbnd(f_curBp,0.5*curRoot6,1.5*curRoot6);
+                    curRoot         = rootFMinBnd;
                     fEvalAtRoot     = f_hAbs2Rel(symVarValues,curRoot);
                     if false
+                        close all;
                         phasValues          = linspace(1e-6,2,100);
                         beamPattern         = f_hAbs2Rel(symVarValues,phasValues);
                         beamPatternApprox2  = 1 + cDU2*phasValues.^2;
@@ -748,7 +752,11 @@ if true
                     rootMat(...
                         nVec    == n,       ... n
                         rVec    == r        ... r
-                        ) = curRoot*n/2;
+                        ) = curRoot6*n/2;
+                    rootMat_fminbnd(...
+                        nVec    == n,       ... n
+                        rVec    == r        ... r
+                        ) = rootFMinBnd*n/2;
                     for curDT = DTVec
                         symVarValues(1) = curDT;
                         simResult(...
@@ -815,6 +823,7 @@ if true
             plotRVec    = rVec(plotRIDVec);
             figure;plot(plotRVec,rootMat(end,plotRIDVec),'square-','MarkerIndices',1:2:length(plotRVec));
             hold on;
+            plot(plotRVec,rootMat_fminbnd(end,plotRIDVec),'o-','MarkerIndices',1:2:length(plotRVec));            
             polyValues  = (rVec.^2)-2.4*(rVec.^1)+1.4;
             plot(rVec,polyValues,'O-','MarkerIndices',1:2:length(plotRVec));
             
