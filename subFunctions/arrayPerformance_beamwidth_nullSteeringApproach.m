@@ -20,26 +20,31 @@ if true
             gs  = 1/(c*ts);
             g   = 1/(c*t);
         else
-            syms gs;
+            syms gs positive;
             g = gs;
         end
         
         %% generating basic terms
-        if enable_feedback
-            ad  = (r/N)*(1-exp(-1i*N*DU))./(1-exp(-1i*DU));%exp(-1i*(DU*(N-1)/2)).*sin(N*DU/2)./sin(DU/2);
-        else
-            ad  = (1/N)*(1-exp(-1i*N*DU))./(1-exp(-1i*DU));%exp(-1i*(DU*(N-1)/2)).*sin(N*DU/2)./sin(DU/2);
-        end
+        ad  = g*(r/N)*(1-exp(-1i*N*DU))./(1-exp(-1i*DU));%exp(-1i*(DU*(N-1)/2)).*sin(N*DU/2)./sin(DU/2);
         bd  = ad * exp(1i*w*ts) / (gs^2) ;
         
         %% full expression transfer function
         if enable_feedback
-            h   = (ad*(gs^2))./(1-(g^2)*bd*exp(-1i*w*t));
+            hDen    = (1-(g^2)*bd*exp(-1i*w*t));
+            h       = (ad*(gs^2))./hDen;
         else
-            h   = ad;
+            h       = ad;
         end
-        hAbs2   = h.*conj(h);
-        
+        ad_sinCos           = simplify(rewrite(simplify(ad*exp(1i*(N-1)*DU/2)),'sincos'));
+        h_sinCos            = rewrite(h,'sincos');
+        ad_sideLobe         = simplify(expand(subs(ad/r,{DU r gs},{3*pi/N 0 1})));
+        ad_sideLobeAbs      = simplify(rewrite(expand(ad_sideLobe*conj(ad_sideLobe)),'sincos'));
+        f_ad_sideLobeAbs    = matlabFunction(ad_sideLobeAbs);
+        nVec_LOCAL          = 2:100;
+        %figure;plot(nVec_LOCAL,f_ad_sideLobeAbs(nVec_LOCAL));
+        h_sideLobe          = subs(h,{DU r},{3*pi/N 0});
+        hAbs2               = h.*conj(h);
+        hAbs2_sideLobe      = simplify(expand(subs(hAbs2,{DU gs},{3*pi/N 1})));
         %% Ideal
         if true
             curExpr     = subs(hAbs2, DT, 0);
@@ -53,6 +58,14 @@ if true
                         foundExpr   = 1;
                     else
                         num         = diff(num, DU);
+                        try
+                            hAbs2_numDiff;
+                            hAbs2_denDiff;
+                        catch
+                            %hAbs2_numDiff = simplify(rewrite(simplify(expand(num)),'sincos'));
+                            hAbs2_numDiff = simplify(num);
+                            hAbs2_denDiff = simplify(den);
+                        end
                         den         = diff(den, DU);
                     end
                 catch
@@ -63,14 +76,29 @@ if true
             curExpr     = numVal/denVal;
             lim_hAbs2   = simplify(curExpr)
         end
-        hAbs2Rel        = simplify(expand(rewrite(hAbs2/lim_hAbs2,'sincos')));
-        
+        hAbs2Rel            = simplify(expand(rewrite(hAbs2/lim_hAbs2,'sincos')));
+        hAbs2Rel_DT0_gs1    = simplify(expand(rewrite(subs(hAbs2Rel,{DT gs}, {0 1}),'sincos')));
+        if false
+            rVec_LOCAL          = [0 0.3:0.2:0.9];
+            %% sidelobe analysis
+            hAbs2Rel_sideLobe   = subs(hAbs2Rel,{DU DT gs},{3*pi/N 0 1});
+            hAbs2Rel_sideLobe   = simplify(expand(rewrite(hAbs2Rel_sideLobe,'sincos')));
+            f_hAbs2Rel_sideLobe = matlabFunction(hAbs2Rel_sideLobe);
+            nVec_LOCAL          = 2:100;
+            figure;
+            hold on;
+            for rVal = rVec_LOCAL
+                plot(nVec_LOCAL,sqrt(f_hAbs2Rel_sideLobe(nVec_LOCAL,rVal)));
+                plot(nVec_LOCAL,2*(1-rVal)*ones(size(nVec_LOCAL))/(3*pi));
+            end
+            ylim([0,0.3]);
+        end
         %% taylor
         if false
             %% d/dDU : 0
-            hAbs2Rel_dDU   = diff(hAbs2Rel,DU);
-            if false
-                curExpr     = subs(hAbs2Rel_dDU,DT,0);
+            hAbs2Rel_dDU        = diff(hAbs2Rel,DU);
+            if true
+                curExpr     = simplify(subs(hAbs2Rel_dDU,DT,0));
                 [num,den]   = numden(curExpr);
                 foundExpr   = 0;
                 while ~foundExpr
@@ -94,7 +122,7 @@ if true
             
             %% d/dDT : 0
             hAbs2Rel_dDT    = diff(hAbs2Rel,DT);
-            if false
+            if true
                 curExpr     = subs(hAbs2Rel_dDT,DT,0);
                 [num,den]   = numden(curExpr);
                 foundExpr   = 0;
@@ -117,9 +145,9 @@ if true
                 lim_hAbs2Rel_dDT   = simplify(curExpr)
             end
             
-            %% d/dDU2 : -((N - 1)*(N - 4*r + 2*N*r + 1))/(6*(r - 1)^2)
+            %% d/dDU2 : -\left(\left(N - 1\right)*\left(N - 4*r + 2*N*r + 1\right)\right)/\left(6*\left(r - 1\right)^2\right)
             hAbs2Rel_dDU2   = diff(hAbs2Rel_dDU,DU);
-            if false
+            if true
                 curExpr     = subs(hAbs2Rel_dDU2,DT,0);
                 [num,den]   = numden(curExpr);
                 foundExpr   = 0;
@@ -142,9 +170,9 @@ if true
                 lim_hAbs2Rel_dDU2   = simplify(curExpr)
             end
             
-            %% d/dDUDT : -(r*w*(N - 1))/(r - 1)^2
+            %% d/dDUDT : -\left(r*w*\left(N - 1\right)\right)/\left(r - 1\right)^2
             hAbs2Rel_dDUDT  = diff(hAbs2Rel_dDT,DU);
-            if false
+            if true
                 curExpr     = subs(hAbs2Rel_dDUDT,DT,0);
                 [num,den]   = numden(curExpr);
                 foundExpr   = 0;
@@ -167,9 +195,9 @@ if true
                 lim_hAbs2Rel_dDUDT  = simplify(curExpr)
             end
             
-            %% d/dDT2 : -(2*r*w^2)/(r - 1)^2
+            %% d/dDT2 : -\left(2*r*w^2\right)/\left(r - 1\right)^2
             hAbs2Rel_dDT2 = diff(hAbs2Rel_dDT,DT);
-            if false
+            if true
                 curExpr     = subs(hAbs2Rel_dDT2,DT,0);
                 [num,den]   = numden(curExpr);
                 foundExpr   = 0;
@@ -194,7 +222,7 @@ if true
             
             %% d/dDU3 : 0
             hAbs2Rel_dDU3   = diff(hAbs2Rel_dDU2,DU);
-            if false
+            if true
                 curExpr     = subs(hAbs2Rel_dDU3,DT,0);
                 [num,den]   = numden(curExpr);
                 foundExpr   = 0;
@@ -219,7 +247,7 @@ if true
             
             %% d/dDU2DT : 0
             hAbs2Rel_dDU2DT = diff(hAbs2Rel_dDU2,DT);
-            if false
+            if true
                 curExpr     = subs(hAbs2Rel_dDU2DT,DT,0);
                 [num,den]   = numden(curExpr);
                 foundExpr   = 0;
@@ -244,7 +272,7 @@ if true
             
             %% d/dDUDT2 : 0
             hAbs2Rel_dDUDT2 = diff(hAbs2Rel_dDT2,DU);
-            if false
+            if true
                 curExpr     = subs(hAbs2Rel_dDUDT2,DT,0);
                 [num,den]   = numden(curExpr);
                 foundExpr   = 0;
@@ -269,7 +297,7 @@ if true
             
             %% d/dDT3 : 0
             hAbs2Rel_dDT3   = diff(hAbs2Rel_dDT2,DT);
-            if false
+            if true
                 curExpr     = subs(hAbs2Rel_dDT3,DT,0);
                 [num,den]   = numden(curExpr);
                 foundExpr   = 0;
@@ -292,9 +320,9 @@ if true
                 lim_hAbs2Rel_dDT3   = simplify(expand(curExpr))
             end
             
-            %% d/dDU4 : -((N - 1)*(2*N^3*r^3 - 21*N^3*r^2 - 24*N^3*r - 2*N^3 + 2*N^2*r^3 + 99*N^2*r^2 + 36*N^2*r - 2*N^2 - 18*N*r^3 - 126*N*r^2 + 6*N*r + 3*N + 12*r^3 + 54*r^2 - 24*r + 3))/(30*(r - 1)^4)
+            %% d/dDU4 : -\left(\left(N - 1\right)*\left(2*N^3*r^3 - 21*N^3*r^2 - 24*N^3*r - 2*N^3 + 2*N^2*r^3 + 99*N^2*r^2 + 36*N^2*r - 2*N^2 - 18*N*r^3 - 126*N*r^2 + 6*N*r + 3*N + 12*r^3 + 54*r^2 - 24*r + 3\right)\right)/\left(30*\left(r - 1\right)^4\right)
             hAbs2Rel_dDU4   = diff(hAbs2Rel_dDU3,DU);
-            if false
+            if true
                 curExpr     = subs(hAbs2Rel_dDU4,DT,0);
                 [num,den]   = numden(curExpr);
                 foundExpr   = 0;
@@ -317,9 +345,9 @@ if true
                 lim_hAbs2Rel_dDU4   = simplify(curExpr)
             end
             
-            %% d/dDT3DU : (r*w^3*(N - 1)*(r^2 + 10*r + 1))/(r - 1)^4
+            %% d/dDT3DU : \left(r*w^3*\left(N - 1\right)*\left(r^2 + 10*r + 1\right)\right)/\left(r - 1\right)^4
             hAbs2Rel_dDT3DU = diff(hAbs2Rel_dDT3,DU);
-            if false
+            if true
                 curExpr     = subs(hAbs2Rel_dDT3DU,DT,0);
                 [num,den]   = numden(curExpr);
                 foundExpr   = 0;
@@ -342,9 +370,9 @@ if true
                 lim_hAbs2Rel_dDT3DU  = simplify(curExpr)
             end
             
-            %% d/dDU2DT2 : (r*w^2*(N - 1)*(3*N - 16*r + 14*N*r + N*r^2 - 2*r^2))/(3*(r - 1)^4)
+            %% d/dDU2DT2 : \left(r*w^2*\left(N - 1\right)*\left(3*N - 16*r + 14*N*r + N*r^2 - 2*r^2\right)\right)/\left(3*\left(r - 1\right)^4\right)
             hAbs2Rel_dDU2dDT2  = diff(hAbs2Rel_dDUDT2,DU);
-            if false
+            if true
                 curExpr     = subs(hAbs2Rel_dDU2dDT2,DT,0);
                 [num,den]   = numden(curExpr);
                 foundExpr   = 0;
@@ -367,9 +395,9 @@ if true
                 lim_hAbs2Rel_dDU2dDT2  = simplify(curExpr)
             end
             
-            %% d/dDTDU3 : (r*w*(N - 1)^2*(2*N - 6*r + 4*N*r - r^2 + 1))/(2*(r - 1)^4)
+            %% d/dDTDU3 : \left(r*w*\left(N - 1\right)^2*\left(2*N - 6*r + 4*N*r - r^2 + 1\right)\right)/\left(2*\left(r - 1\right)^4\right)
             hAbs2Rel_dDTDU3 = diff(hAbs2Rel_dDU3,DT);
-            if false
+            if true
                 curExpr     = subs(hAbs2Rel_dDTDU3,DT,0);
                 [num,den]   = numden(curExpr);
                 foundExpr   = 0;
@@ -392,9 +420,9 @@ if true
                 lim_hAbs2Rel_dDTDU3  = simplify(curExpr)
             end
             
-            %% d/dDT4 : (2*r*w^4*(r^2 + 10*r + 1))/(r - 1)^4
+            %% d/dDT4 : \left(2*r*w^4*\left(r^2 + 10*r + 1\right)\right)/\left(r - 1\right)^4
             hAbs2Rel_dDT4   = diff(hAbs2Rel_dDT3,DT);
-            if false
+            if true
                 curExpr     = subs(hAbs2Rel_dDT4,DT,0);
                 [num,den]   = numden(curExpr);
                 foundExpr   = 0;
@@ -419,7 +447,7 @@ if true
             
             %% d/dDU5 : 0
             hAbs2Rel_dDU5   = diff(hAbs2Rel_dDU4,DU);
-            if false
+            if true
                 curExpr     = subs(hAbs2Rel_dDU5,DT,0);
                 [num,den]   = numden(curExpr);
                 foundExpr   = 0;
@@ -444,7 +472,7 @@ if true
             
             %% d/dDU4DT : 0
             hAbs2Rel_dDU4DT = diff(hAbs2Rel_dDU4,DT);
-            if false
+            if true
                 curExpr     = subs(hAbs2Rel_dDU4DT,DT, 0);
                 [num,den]   = numden(curExpr);
                 foundExpr   = 0;
@@ -469,7 +497,7 @@ if true
             
             %% d/dDU3DT2 : 0
             hAbs2Rel_dDU3DT2 = diff(hAbs2Rel_dDU2dDT2,DU);
-            if false
+            if true
                 curExpr     = subs(hAbs2Rel_dDU3DT2,DT, 0);
                 [num,den]   = numden(curExpr);
                 foundExpr   = 0;
@@ -494,7 +522,7 @@ if true
             
             %% d/dDU2DT3 : 0
             hAbs2Rel_dDU2DT3 = diff(hAbs2Rel_dDU2dDT2,DT);
-            if false
+            if true
                 curExpr     = subs(hAbs2Rel_dDU2DT3,DT, 0);
                 [num,den]   = numden(curExpr);
                 foundExpr   = 0;
@@ -519,7 +547,7 @@ if true
             
             %% d/dDUDT4 : 0
             hAbs2Rel_dDUDT4 = diff(hAbs2Rel_dDT3DU,DT);
-            if false
+            if true
                 curExpr     = subs(hAbs2Rel_dDUDT4,DT, 0);
                 [num,den]   = numden(curExpr);
                 foundExpr   = 0;
@@ -544,7 +572,7 @@ if true
             
             %% d/dDT5 : 0
             hAbs2Rel_dDT5   = diff(hAbs2Rel_dDT4,DT);
-            if false
+            if true
                 curExpr     = subs(hAbs2Rel_dDT5,DT,0);
                 [num,den]   = numden(curExpr);
                 foundExpr   = 0;
@@ -569,7 +597,7 @@ if true
             
             %% d/dDU6 : -((N - 1)*(4*N^5*r^5 - 62*N^5*r^4 + 264*N^5*r^3 + 590*N^5*r^2 + 146*N^5*r + 3*N^5 + 4*N^4*r^5 + 106*N^4*r^4 - 2340*N^4*r^3 - 2266*N^4*r^2 - 232*N^4*r + 3*N^4 - 24*N^3*r^5 + 645*N^3*r^4 + 6200*N^3*r^3 + 2760*N^3*r^2 - 120*N^3*r - 11*N^3 - 24*N^2*r^5 - 1875*N^2*r^4 - 7240*N^2*r^3 - 600*N^2*r^2 + 300*N^2*r - 11*N^2 + 60*N*r^5 + 1779*N*r^4 + 3848*N*r^3 - 978*N*r^2 + 6*N*r + 10*N - 24*r^5 - 573*r^4 - 772*r^3 + 534*r^2 - 120*r + 10))/(84*(r - 1)^6)
             hAbs2Rel_dDU6   = diff(hAbs2Rel_dDU5,DU);
-            if false
+            if true
                 curExpr     = subs(hAbs2Rel_dDU6,DT,0);
                 [num,den]   = numden(curExpr);
                 foundExpr   = 0;
@@ -592,7 +620,7 @@ if true
                 lim_hAbs2Rel_dDU6   = simplify(curExpr)
             end
             
-            %% d/dDU7 : 
+            %% d/dDU7 :
             hAbs2Rel_dDU7   = diff(hAbs2Rel_dDU6,DU);
             if true
                 curExpr     = subs(hAbs2Rel_dDU7,DT,0);
@@ -617,7 +645,7 @@ if true
                 lim_hAbs2Rel_dDU7   = simplify(curExpr)
             end
             
-            %% d/dDU8 : 
+            %% d/dDU8 :
             hAbs2Rel_dDU8   = diff(hAbs2Rel_dDU7,DU);
             if true
                 curExpr     = subs(hAbs2Rel_dDU8,DT,0);
@@ -660,8 +688,8 @@ if true
             lambdaVal   = cVal/fVal;
             if true
                 %% N
-                init_N      = 2;
-                final_N     = 200;
+                init_N      = 5;
+                final_N     = 100;
                 hop_N       = 1;
                 %% r
                 nVal_r      = 30;
@@ -675,15 +703,15 @@ if true
                 nVal_DT     = 30;
                 init_DT     = 0;
                 final_DT    = .04*lambdaVal/cVal;
-            end            
+            end
             %% generate input
             nVec    = init_N : hop_N : final_N;
-            rVec    = [0 0.1 : 0.05 : 0.95 , 0.99];%linspace(init_r,final_r,nVal_r);
+            rVec    = [0 0.1 : 0.05 : 0.95 , 0.99];%DO NOT CHANGE old = linspace(init_r,final_r,nVal_r);
             DUVec   = linspace(init_DU,final_DU,nVal_DU);
-            DTVec   = linspace(init_DT,final_DT,nVal_DT);            
+            DTVec   = linspace(init_DT,final_DT,nVal_DT);
             if ~enable_feedback
                 rVec = 0;
-            end            
+            end
             %% simulate
             nVal_N              = length(nVec);
             simResult           = zeros(nVal_DT,nVal_DU,nVal_N,length(rVec));
@@ -703,11 +731,12 @@ if true
             symVarValues(6) = wVal;
             symVarValues(3) = cVal;
             symVarValues(5) = tsVal;
+            uVec            = linspace(1e-6,pi,100);
             
-            for r = rVec
-                symVarValues(4) = r;
-                for n = nVec
-                    symVarValues(2) = n;
+            for n = nVec
+                symVarValues(2) = n;
+                for r = rVec
+                    symVarValues(4) = r;
                     cDU             = (nchoosek(1,0)/factorial(1))*(0);
                     cDT             = (nchoosek(1,1)/factorial(1))*(0);
                     cDU2            = (nchoosek(2,0)/factorial(2))*(-((n - 1)*(n - 4*r + 2*n*r + 1))/(6*(r - 1)^2));
@@ -733,21 +762,54 @@ if true
                     cDU8            = (nchoosek(8,0)/factorial(8))*(0);
                     cVec6           = [cDU6 cDU4 cDU2 1-0.5]; % compare to 0.5
                     rootVec6        = roots(cVec6);
-                    curRoot6        = sqrt(rootVec6(cellfun(@isreal,(num2cell(rootVec6)))));                 
-                    f_curBp         = @(pVec) (f_hAbs2Rel(symVarValues,pVec(:))-0.5).^2;
-                    rootFMinBnd     = fminbnd(f_curBp,0.5*curRoot6,1.5*curRoot6);
-                    curRoot         = rootFMinBnd;
-                    fEvalAtRoot     = f_hAbs2Rel(symVarValues,curRoot);
-                    if false
+                    curRoot6        = sqrt(rootVec6(cellfun(@isreal,(num2cell(rootVec6)))));
+                    
+                    f_curBp             = @(pVec) (f_hAbs2Rel(symVarValues,pVec(:)')-0.5).^2;
+                    
+                    distanceVec         = f_curBp(uVec);
+                    [~,minDistanceID]   = min(distanceVec);
+                    minDistanceU        = uVec(minDistanceID);
+                    rootFMinBnd         = fminbnd(f_curBp,0.9*minDistanceU,1.1*minDistanceU);
+                    curRoot             = rootFMinBnd;
+                    fEvalAtRoot         = f_hAbs2Rel(symVarValues,curRoot);
+                    if true
                         close all;
-                        phasValues          = linspace(1e-6,2,100);
+                        phasValues          = logspace(-6,log10(pi),100000);
+                        symVarValuesULA     = symVarValues;
+                        symVarValuesULA(4)  = 0;
+                        ulaBP               = f_hAbs2Rel(symVarValuesULA,phasValues);
+                        ulaBP(isnan(ulaBP)) = 1;
                         beamPattern         = f_hAbs2Rel(symVarValues,phasValues);
+                        beamPattern(isnan(beamPattern)) = 1;
+                        beamPatternAux      = f_curBp(phasValues);
                         beamPatternApprox2  = 1 + cDU2*phasValues.^2;
                         beamPatternApprox4  = 1 + cDU2*phasValues.^2 + cDU4*phasValues.^4;
                         beamPatternApprox6  = 1 + cDU2*phasValues.^2 + cDU4*phasValues.^4 + cDU6*phasValues.^6;
-                        figure;plot(phasValues,[beamPattern(:) beamPatternApprox2(:) beamPatternApprox4(:) beamPatternApprox6(:)]);
+                        figure;
+                        %                         plot(phasValues,...
+                        %                             db([...
+                        %                             ulaBP(:)...
+                        %                             ...beamPattern(:) ...
+                        %                             ...beamPatternAux(:) ...
+                        %                             ...beamPatternApprox2(:) ...
+                        %                             ...beamPatternApprox4(:) ...
+                        %                             ...beamPatternApprox6(:)...
+                        %                             ]) ...
+                        %                             ,'*'...
+                        %                             );
+                        %                         hold on;
+                        plot(phasValues,...
+                            db([...
+                            ...ulaBP(:)...
+                            beamPattern(:) ...
+                            ...beamPatternAux(:) ...
+                            beamPatternApprox2(:) ...
+                            beamPatternApprox4(:) ...
+                            beamPatternApprox6(:)...
+                            ]));
                         legend('Beampattern','Approx2','Approx4','Approx6');
-                        ylim([0,1.5]);
+                        title(['N=' num2str(n) ', r=' num2str(r)]);
+                        ylim([-4,.5]);
                     end
                     rootMat(...
                         nVec    == n,       ... n
@@ -796,12 +858,12 @@ if true
                             ...+cDT4           *(DUVec.^(0))*curDT^(4) ...
                             ...+cDT4_noTs      *(DUVec.^(0))*curDT^(4) ...
                             ...+cDU6           *(DUVec.^(6))*curDT^(0) ...
-                            ;                        
+                            ;
                     end
                 end
             end
             plotNIDVec  = 1 : length(nVec);
-            plotRIDVec  = [1 2 : 5 : length(rVec)-1, length(rVec)];
+            plotRIDVec  = [1 2 : 4 : length(rVec)-1];
             plotNVec    = nVec(plotNIDVec);
             plotRVec    = rVec(plotRIDVec);
             figure;plot(nVec,rootMat(:,plotRIDVec));
@@ -821,14 +883,19 @@ if true
             plotRIDVec  = 1 : length(rVec);
             plotNVec    = nVec(plotNIDVec);
             plotRVec    = rVec(plotRIDVec);
+            
             figure;plot(plotRVec,rootMat(end,plotRIDVec),'square-','MarkerIndices',1:2:length(plotRVec));
             hold on;
-            plot(plotRVec,rootMat_fminbnd(end,plotRIDVec),'o-','MarkerIndices',1:2:length(plotRVec));            
-            polyValues  = (rVec.^2)-2.4*(rVec.^1)+1.4;
-            plot(rVec,polyValues,'O-','MarkerIndices',1:2:length(plotRVec));
-            
+            polyCoeffs      = polyfit(plotRVec,rootMat(end,plotRIDVec)./(plotRVec-1),2);
+            syms x;
+            polyCoeffsRound = round(10*polyCoeffs)/10;
+            residualPoly    = (polyCoeffsRound*reshape(x.^(2:-1:0),[],1));
+            polySym         = (x - 1).*residualPoly;
+            polyValue       = eval(subs(polySym,x,plotRVec));
+            plot(plotRVec,polyValue,'o-','MarkerIndices',1:2:length(plotRVec));
+            ylim([0 1.5])
             %             title({...
-            %                 'Plot of $\left(\frac{N}{1-r}\right)^{2}\Delta_{\theta,HPBW}$ vs $r$ ' ...
+            %                 'Plot of $\right))(\frac{N}{1-r}\right)^{2}\Delta_{\theta,HPBW}$ vs $r$ ' ...
             %                 ['Comparing to $\frac{2}{1-r}$'] ...
             %                 },'Interpreter','latex');
             [hleg1, hobj1] = legend({'' ''},'Interpreter','latex','position',[0.45 0.75 0.2 0.15]);
