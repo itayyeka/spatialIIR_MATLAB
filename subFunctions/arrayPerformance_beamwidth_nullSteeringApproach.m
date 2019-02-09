@@ -25,19 +25,19 @@ if true
         end
         
         %% generating basic terms
-        ad  = g*(r/N)*(1-exp(-1i*N*DU))./(1-exp(-1i*DU));%exp(-1i*(DU*(N-1)/2)).*sin(N*DU/2)./sin(DU/2);
-        bd  = ad * exp(1i*w*ts) / (gs^2) ;
+        bd  = g*(r/N)*(1-exp(-1i*N*DU))./(1-exp(-1i*DU));%exp(-1i*(DU*(N-1)/2)).*sin(N*DU/2)./sin(DU/2);
+        ad  = bd * exp(1i*w*ts) / (gs^2) ;
         
         %% full expression transfer function
         if enable_feedback
-            hDen    = (1-(g^2)*bd*exp(-1i*w*t));
-            h       = (ad*(gs^2))./hDen;
+            hDen    = (1-(g^2)*ad*exp(-1i*w*t));
+            h       = (bd*(gs^2))./hDen;
         else
-            h       = ad;
+            h       = bd;
         end
-        ad_sinCos           = simplify(rewrite(simplify(ad*exp(1i*(N-1)*DU/2)),'sincos'));
+        ad_sinCos           = simplify(rewrite(simplify(bd*exp(1i*(N-1)*DU/2)),'sincos'));
         h_sinCos            = rewrite(h,'sincos');
-        ad_sideLobe         = simplify(expand(subs(ad/r,{DU r gs},{3*pi/N 0 1})));
+        ad_sideLobe         = simplify(expand(subs(bd/r,{DU r gs},{3*pi/N 0 1})));
         ad_sideLobeAbs      = simplify(rewrite(expand(ad_sideLobe*conj(ad_sideLobe)),'sincos'));
         f_ad_sideLobeAbs    = matlabFunction(ad_sideLobeAbs);
         nVec_LOCAL          = 2:100;
@@ -45,6 +45,7 @@ if true
         h_sideLobe          = subs(h,{DU r},{3*pi/N 0});
         hAbs2               = h.*conj(h);
         hAbs2_sideLobe      = simplify(expand(subs(hAbs2,{DU gs},{3*pi/N 1})));
+        
         %% Ideal
         if true
             curExpr     = subs(hAbs2, DT, 0);
@@ -93,6 +94,132 @@ if true
             end
             ylim([0,0.3]);
         end
+        
+        %% FISHER INFORMATION MATRIX
+        if true
+            syms R positive;
+            
+            %% configure
+            cVal    = 3e8;
+            fS      = 1e9;
+            wS      = 2*pi*fS;
+            range   = 10e3;
+            tauPd   = R/c;
+            phi     = w*tauPd;
+            nVec    = 2:10;
+            rVec    = [0.01 0.1:0.1:0.9 0.09];
+            nValw   = 1000;
+            
+            %% DCBF symbolics (DT = 0)
+            if true
+                %% dSHAd (DTFT of ramp)
+                term1   = N*exp(-1i*N*DU)*(1-exp(-1i*DU));
+                term2   = (1-exp(-1i*N*DU))*exp(-1i*DU);
+                term3   = 1-exp(-1i*DU);
+                dSHAd   = r*exp(1i*DT)*(term1-term2)/(N*term3^2);
+                %% dSHd (dirichle)
+                dSHd    = r*exp(1i*DT)*(1-exp(N*DU))/(N*(1-exp(DU)));
+                %% J
+                denJ    = (1-dSHd)^2;
+                term6   = dSHAd/denJ;
+                J_DUDU  = term6*conj(term6);
+                term7   = dSHd/denJ;
+                J_DTDT  = w^2*term7*conj(term7);
+                denJAbs = denJ*conj(denJ);
+                bHdConj = dSHd;
+                J_DUDT  = real(1i*w*dSHAd*bHdConj/denJAbs);
+                J_DTDU  = J_DUDT;
+                J       = [J_DUDU J_DUDT ; J_DTDT J_DTDU];
+                %% CRLB
+                CRLB    = inv(J);
+                CRLB_DU = CRLB(1,1);
+                CRLB_DT = CRLB(2,2);
+            end
+            if false
+                simple = [];
+                disp('real(dSHAd)');
+                temp                = simplify(rewrite(real(dSHAd),'exp'))
+                simple.dSHAd_real   = temp;
+                disp('imag(dSHAd)');
+                temp                = simplify(rewrite(imag(dSHAd),'exp'))
+                simple.dSHAd_imag   = temp;
+                disp('dSHAdAbs');
+                temp                = simplify(rewrite(expand(dSHAd*conj(dSHAd)),'sincos'))
+                simple.dSHAdAbs     = temp;
+                disp('J_DUDU');
+                temp                = simplify(rewrite(expand(J_DUDU),'sincos'))
+                simple.J_DUDU       = temp;
+                disp('J_DTDT');
+                temp                = simplify(rewrite(expand(J_DTDT),'sincos'))
+                simple.J_DTDT       = temp;
+                disp('J_DUDT');
+                temp                = simplify(rewrite(expand(J_DUDT),'sincos'))
+                simple.J_DUDT       = temp;
+            end
+            
+            %% simulate
+            wVec            = linspace(-wS/2,wS/2,100);
+            DUVec           = linspace(0,2*pi,100);
+            DTVec           = DUVec;
+            [DUMAT,DTMAT]   = meshgrid(DUVec,DTVec);
+            
+            if true
+                %% CRLB_DU_DU0
+                iterID      = 0;
+                curExpr     = CRLB_DU;
+                [num,den]   = numden(curExpr);
+                foundExpr   = 0;
+                while ~foundExpr
+                    numVal      = subs(num, DU, 0);
+                    denVal      = subs(den, DU, 0);
+                    if ~(denVal==0)
+                        foundExpr   = 1;
+                    else
+                        num         = diff(num, DU);
+                        den         = diff(den, DU);
+                        iterID      = iterID+1;
+                    end
+                end
+                curExpr         = numVal/denVal;
+                CRLB_DU_DU0     = simplify(curExpr);
+                disp(['CRLB_DU_DU0 is calculated in ' num2str(iterID) ' iterations'])
+                
+            end
+            parSets     = cell(length(nVec),length(rVec),length(wVec));
+            for nID  = 1:length(nVec)
+                for rID=1:length(rVec)
+                    for wID=1:length(wVec)
+                        parSets{nID,rID,wID}.nVal       = nVec(nID);
+                        parSets{nID,rID,wID}.rVal       = rVec(rID);
+                        parSets{nID,rID,wID}.wVal       = wVec(wID);
+                        parSets{nID,rID,wID}.DUMAT      = DUMAT;
+                        parSets{nID,rID,wID}.DTMAT      = DTMAT;
+                    end
+                end
+            end
+            simResult   = cell(length(nVec),length(rVec),length(wVec));
+            for nID     = 1:length(nVec)
+                for rID     = 1:length(rVec)
+                    parfor wID  = 1:length(wVec)
+                        simResID                = nID*length(rVec)*length(wVec) + rID*length(wVec) + wID;
+                        curParSet               = parSets{simResID};
+                        nVal                    = curParSet.nVal;
+                        rVal                    = curParSet.rVal;
+                        wVal                    = curParSet.wVal;
+                        curDUMAT                = curParSet.DUMAT;
+                        curDTMAT                = curParSet.DTMAT;
+                        curCRLB_DU              = subs(CRLB_DU,N,nVal);
+                        curCRLB_DU              = subs(curCRLB_DU,r,rVal);
+                        curCRLB_DU              = subs(curCRLB_DU,w,wVal);
+                        CRLB_DU_DU0Val          = subs(CRLB_DU_DU0,DT,curDUMAT);
+                        curCRLB_DUnoDU0         = subs(curCRLB_DU,{DU,DT},{curDUMAT(:,2:end-1),curDTMAT(:,2:end-1)});
+                        curCRLB_DUVal           = [CRLB_DU_DU0Val(:) curCRLB_DUnoDU0 CRLB_DU_DU0Val(:)];
+                        simResult(nID,rID,wID)  = curCRLB_DUVal;
+                    end
+                end
+            end
+        end
+        
         %% taylor
         if false
             %% d/dDU : 0
