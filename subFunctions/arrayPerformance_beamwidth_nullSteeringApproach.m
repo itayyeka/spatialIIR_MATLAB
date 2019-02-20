@@ -25,25 +25,27 @@ if true
         end
         
         %% generating basic terms
-        bd  = g*(r/N)*(1-exp(-1i*N*DU))./(1-exp(-1i*DU));%exp(-1i*(DU*(N-1)/2)).*sin(N*DU/2)./sin(DU/2);
-        ad  = bd * exp(1i*w*ts) / (gs^2) ;
+        ad  = (g/gs)*(r/N)*exp(+1i*w*ts)*(1-exp(-1i*N*w*DU))/(1-exp(-1i*w*DU));
+%         ad  = (g/gs)*(r/N)*exp(-1i*(N-1)*w*DU/2)*sin(N*w*DU/2)/sin(w*DU/2);
+        bd  = ad;
         
         %% full expression transfer function
         if enable_feedback
-            hDen    = (1-(g^2)*ad*exp(-1i*w*t));
-            h       = (bd*(gs^2))./hDen;
+            hDen    = 1-exp(-1i*w*t)*bd;
+            h       = exp(-1i*w*t)*ad/hDen;
         else
-            h       = bd;
+            h       = exp(-1i*w*t)*ad;
         end
-        ad_sinCos           = simplify(rewrite(simplify(bd*exp(1i*(N-1)*DU/2)),'sincos'));
+        h                   = simplify(h);
+        ad_sinCos           = simplify(rewrite(simplify(ad*exp(1i*(N-1)*DU/2)),'sincos'));
         h_sinCos            = rewrite(h,'sincos');
-        ad_sideLobe         = simplify(expand(subs(bd/r,{DU r gs},{3*pi/N 0 1})));
+        ad_sideLobe         = simplify(expand(subs(ad/r,{DU r gs},{3*pi/N 0 1})));
         ad_sideLobeAbs      = simplify(rewrite(expand(ad_sideLobe*conj(ad_sideLobe)),'sincos'));
         f_ad_sideLobeAbs    = matlabFunction(ad_sideLobeAbs);
         nVec_LOCAL          = 2:100;
         %figure;plot(nVec_LOCAL,f_ad_sideLobeAbs(nVec_LOCAL));
         h_sideLobe          = subs(h,{DU r},{3*pi/N 0});
-        hAbs2               = h.*conj(h);
+        hAbs2               = simplify(expand(h.*conj(h)));
         hAbs2_sideLobe      = simplify(expand(subs(hAbs2,{DU gs},{3*pi/N 1})));
         
         %% Ideal
@@ -77,7 +79,13 @@ if true
             curExpr     = numVal/denVal;
             lim_hAbs2   = simplify(curExpr)
         end
-        hAbs2Rel            = simplify(expand(rewrite(hAbs2/lim_hAbs2,'sincos')));
+        hAbs2Rel            = simplify(rewrite(expand(hAbs2/lim_hAbs2),'sincos'));
+        hAbs2Rel_onlyDU     = simplify(expand(subs(hAbs2Rel,{DT },{0})));
+        if true
+            %% DEBUG
+            hAbs2Rel_onlyDU_values = subs(hAbs2Rel_onlyDU,{N, r, w, DU}, {5,0.7,1, linspace(-pi/2,pi/2,1000)});
+            figure;plot(db(abs(hAbs2Rel_onlyDU_values)));
+        end
         hAbs2Rel_DT0_gs1    = simplify(expand(rewrite(subs(hAbs2Rel,{DT gs}, {0 1}),'sincos')));
         if false
             rVec_LOCAL          = [0 0.3:0.2:0.9];
@@ -95,8 +103,121 @@ if true
             ylim([0,0.3]);
         end
         
-        %% FISHER INFORMATION MATRIX
+        %% two freq approach
         if true
+            syms DW positive;
+            
+            %% configure
+            cVal    = 3e8;
+            fS      = 1e9;
+            wS      = 2*pi*fS;
+            range   = 10e3;
+            nVec    = 2:10;
+            rVec    = [0.01 0.1:0.1:0.9 0.09];
+            nValw   = 1000;
+            
+            %% twoFreq response
+            h               = simplify(expand(h));
+            w2              = w + DW;
+            h2              = subs(h,w,w2);
+            
+            if true
+                processorOutput = 1/((1/h) - (1/h2));
+                twoFreqH        = simplify(rewrite(expand(processorOutput),'sincos'));
+                twoFreqHAbs2    = simplify(rewrite(expand(twoFreqH*conj(twoFreqH)),'sincos'));
+                if true
+                    %% lim_twoFreqHAbs2_DU0
+                    if true
+                        curExpr         = twoFreqHAbs2;
+                        [num,den]       = numden(curExpr);
+                        foundExpr       = 0;
+                        while ~foundExpr
+                            numVal      = subs(num, DU, 0);
+                            denVal      = subs(den, DU, 0);
+                            if ~(denVal==0)
+                                foundExpr   = 1;
+                            else
+                                num         = diff(num, DU);
+                                den         = diff(den, DU);
+                            end
+                        end
+                        curExpr             = numVal/denVal;
+                        lim_twoFreqHAbs2_DU0= simplify(curExpr);
+                    end
+                    %% lim_twoFreqHAbs2_DW0
+                    if true
+                        curExpr         = twoFreqHAbs2;
+                        [num,den]       = numden(curExpr);
+                        foundExpr       = 0;
+                        while ~foundExpr
+                            numVal      = simplify(subs(num, DW, 0));
+                            denVal      = simplify(subs(den, DW, 0));
+                            if ~(denVal==0)
+                                foundExpr   = 1;
+                            else
+                                num         = diff(num, DW);
+                                den         = diff(den, DW);
+                            end
+                        end
+                        curExpr             = numVal/denVal;
+                        lim_twoFreqHAbs2_DW0= simplify(curExpr);
+                    end
+                end
+                twoFreqHAbs2Rel     = simplify(twoFreqHAbs2 / lim_twoFreqHAbs2_DU0);
+                
+                phVec               = linspace(1e-6,pi,10000);
+                hAbs2RelVal         = subs(hAbs2Rel,{N DT r DU}, {3 0 0.9 phVec});
+                twoFreqHAbs2RelVal  = subs(twoFreqHAbs2Rel,{N DU},{3 phVec});
+                figure;plot([hAbs2RelVal(:) twoFreqHAbs2RelVal(:)]);
+            end
+            
+            %% simulate
+            if false
+                DUVec           = linspace(0,2*pi,100);
+                DTVec           = DUVec;
+                [DUMAT,DTMAT]   = meshgrid(DUVec,DTVec);
+                
+                parSets     = cell(length(nVec),length(rVec),length(wVec));
+                for nID  = 1:length(nVec)
+                    for rID=1:length(rVec)
+                        for wID=1:length(wVec)
+                            parSets{nID,rID,wID}.nVal       = nVec(nID);
+                            parSets{nID,rID,wID}.rVal       = rVec(rID);
+                            parSets{nID,rID,wID}.wVal       = wVec(wID);
+                            parSets{nID,rID,wID}.DUVec      = DUVec;
+                            parSets{nID,rID,wID}.DTVec      = DTVec;
+                            parSets{nID,rID,wID}.DUMAT      = DUMAT;
+                            parSets{nID,rID,wID}.DTMAT      = DTMAT;
+                        end
+                    end
+                end
+                simResult   = cell(length(nVec),length(rVec),length(wVec));
+                for nID     = 1:length(nVec)
+                    for rID     = 1:length(rVec)
+                        parfor wID  = 1:length(wVec)
+                            curParSet               = parSets(nID,rID,wID);
+                            nVal                    = curParSet{1}.nVal;
+                            rVal                    = curParSet{1}.rVal;
+                            wVal                    = curParSet{1}.wVal;
+                            curDUMAT                = curParSet{1}.DUMAT;
+                            curDTMAT                = curParSet{1}.DTMAT;
+                            curDUVec                = curParSet{1}.DUVec;
+                            curDTVec                = curParSet{1}.DTVec;
+                            curCRLB_DU              = subs(CRLB_DU,N,nVal);
+                            curCRLB_DU              = subs(curCRLB_DU,r,rVal);
+                            curCRLB_DU              = subs(curCRLB_DU,w,wVal);
+                            CRLB_DU_DU0Val          = subs(CRLB_DU_DU0,DT,curDTVec);
+                            curCRLB_DUnoDU0         = subs(curCRLB_DU,{DU,DT},{curDUMAT(:,2:end-1),curDTMAT(:,2:end-1)});
+                            curCRLB_DUVal           = [CRLB_DU_DU0Val(:) curCRLB_DUnoDU0 CRLB_DU_DU0Val(:)];
+                            simResult(nID,rID,wID)  = {curCRLB_DUVal};
+                        end
+                    end
+                end
+            end
+        end
+        
+        %% FISHER INFORMATION MATRIX
+        if false
             syms R positive;
             
             %% configure
@@ -104,8 +225,6 @@ if true
             fS      = 1e9;
             wS      = 2*pi*fS;
             range   = 10e3;
-            tauPd   = R/c;
-            phi     = w*tauPd;
             nVec    = 2:10;
             rVec    = [0.01 0.1:0.1:0.9 0.09];
             nValw   = 1000;
@@ -192,6 +311,8 @@ if true
                         parSets{nID,rID,wID}.nVal       = nVec(nID);
                         parSets{nID,rID,wID}.rVal       = rVec(rID);
                         parSets{nID,rID,wID}.wVal       = wVec(wID);
+                        parSets{nID,rID,wID}.DUVec      = DUVec;
+                        parSets{nID,rID,wID}.DTVec      = DTVec;
                         parSets{nID,rID,wID}.DUMAT      = DUMAT;
                         parSets{nID,rID,wID}.DTMAT      = DTMAT;
                     end
@@ -201,20 +322,21 @@ if true
             for nID     = 1:length(nVec)
                 for rID     = 1:length(rVec)
                     parfor wID  = 1:length(wVec)
-                        simResID                = nID*length(rVec)*length(wVec) + rID*length(wVec) + wID;
-                        curParSet               = parSets{simResID};
-                        nVal                    = curParSet.nVal;
-                        rVal                    = curParSet.rVal;
-                        wVal                    = curParSet.wVal;
-                        curDUMAT                = curParSet.DUMAT;
-                        curDTMAT                = curParSet.DTMAT;
+                        curParSet               = parSets(nID,rID,wID);
+                        nVal                    = curParSet{1}.nVal;
+                        rVal                    = curParSet{1}.rVal;
+                        wVal                    = curParSet{1}.wVal;
+                        curDUMAT                = curParSet{1}.DUMAT;
+                        curDTMAT                = curParSet{1}.DTMAT;
+                        curDUVec                = curParSet{1}.DUVec;
+                        curDTVec                = curParSet{1}.DTVec;
                         curCRLB_DU              = subs(CRLB_DU,N,nVal);
                         curCRLB_DU              = subs(curCRLB_DU,r,rVal);
                         curCRLB_DU              = subs(curCRLB_DU,w,wVal);
-                        CRLB_DU_DU0Val          = subs(CRLB_DU_DU0,DT,curDUMAT);
+                        CRLB_DU_DU0Val          = subs(CRLB_DU_DU0,DT,curDTVec);
                         curCRLB_DUnoDU0         = subs(curCRLB_DU,{DU,DT},{curDUMAT(:,2:end-1),curDTMAT(:,2:end-1)});
                         curCRLB_DUVal           = [CRLB_DU_DU0Val(:) curCRLB_DUnoDU0 CRLB_DU_DU0Val(:)];
-                        simResult(nID,rID,wID)  = curCRLB_DUVal;
+                        simResult(nID,rID,wID)  = {curCRLB_DUVal};
                     end
                 end
             end
