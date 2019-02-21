@@ -25,8 +25,7 @@ if true
         end
         
         %% generating basic terms
-        ad  = (g/gs)*(r/N)*exp(+1i*w*ts)*(1-exp(-1i*N*w*DU))/(1-exp(-1i*w*DU));
-%         ad  = (g/gs)*(r/N)*exp(-1i*(N-1)*w*DU/2)*sin(N*w*DU/2)/sin(w*DU/2);
+        ad  = (g/gs)*(r/N)*exp(+1i*w*ts)*(1-exp(-1i*N*DU))/(1-exp(-1i*DU));
         bd  = ad;
         
         %% full expression transfer function
@@ -46,6 +45,7 @@ if true
         %figure;plot(nVec_LOCAL,f_ad_sideLobeAbs(nVec_LOCAL));
         h_sideLobe          = subs(h,{DU r},{3*pi/N 0});
         hAbs2               = simplify(expand(h.*conj(h)));
+        hAbs2_sincos        = simplify(rewrite(expand(h.*conj(h)),'sincos'));
         hAbs2_sideLobe      = simplify(expand(subs(hAbs2,{DU gs},{3*pi/N 1})));
         
         %% Ideal
@@ -80,6 +80,19 @@ if true
             lim_hAbs2   = simplify(curExpr)
         end
         hAbs2Rel            = simplify(rewrite(expand(hAbs2/lim_hAbs2),'sincos'));
+        hAbs2_sincos_rel    = simplify(expand(hAbs2_sincos/lim_hAbs2));
+        if true
+            %% ambiguity
+            duVecTmp            = linspace(-pi,pi,100);
+            dTVecTmp            = linspace(-pi,pi,100);
+            [duMATTmp,dTMatTmp] = meshgrid(duVecTmp,dTVecTmp);
+            hAbs2_sincos_relVal_NwdUdT = subs(hAbs2_sincos_rel,{N DU DT w},{3 duMATTmp dTMatTmp 1});
+            for rTmp = [0.6 0.75 0.9 0.99]
+                hAbs2_sincos_relVal = eval(subs(hAbs2_sincos_relVal_NwdUdT,{r},{rTmp}));
+                figure;
+                surf(duMATTmp,dTMatTmp,db(hAbs2_sincos_relVal));
+            end
+        end
         hAbs2Rel_onlyDU     = simplify(expand(subs(hAbs2Rel,{DT },{0})));
         if true
             %% DEBUG
