@@ -36,6 +36,10 @@ if true
             h       = exp(-1i*w*t)*ad;
         end
         h                   = simplify(h);
+        syms dW; 
+        w2  = w + dW; 
+        DU2 = DU*w2/w;
+        
         ad_sinCos           = simplify(rewrite(simplify(ad*exp(1i*(N-1)*DU/2)),'sincos'));
         h_sinCos            = rewrite(h,'sincos');
         ad_sideLobe         = simplify(expand(subs(ad/r,{DU r gs},{3*pi/N 0 1})));
@@ -84,13 +88,16 @@ if true
         if true
             %% ambiguity
             duVecTmp            = linspace(-pi,pi,100);
-            dTVecTmp            = linspace(-pi,pi,100);
+            dTVecTmp            = linspace(-pi,pi,100);            
             [duMATTmp,dTMatTmp] = meshgrid(duVecTmp,dTVecTmp);
+            
             hAbs2_sincos_relVal_NwdUdT = subs(hAbs2_sincos_rel,{N DU DT w},{3 duMATTmp dTMatTmp 1});
-            for rTmp = [0.6 0.75 0.9 0.99]
+            for rTmp = [0.4 0.6 0.8 0.9]
                 hAbs2_sincos_relVal = eval(subs(hAbs2_sincos_relVal_NwdUdT,{r},{rTmp}));
                 figure;
-                surf(duMATTmp,dTMatTmp,db(hAbs2_sincos_relVal));
+                contour(duMATTmp/pi,dTMatTmp/pi,db(hAbs2_sincos_relVal),'LevelList',[0 -3 -9 -20 -40 -80],'ShowText','on');
+                xticks(-0.75:0.25:0.75);
+                yticks(-0.75:0.25:0.75);
             end
         end
         hAbs2Rel_onlyDU     = simplify(expand(subs(hAbs2Rel,{DT },{0})));
