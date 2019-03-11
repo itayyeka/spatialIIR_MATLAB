@@ -12,13 +12,23 @@ catch
 end
 
 %% general case BP (\label{eqn_generalCaseBp})
+syms dPhi DU N;
 if true
-    hAbs2Rel    = H_development();
+    hAbs2Rel            = H_development();
+    hAbs2Rel_steerError = subs(hAbs2Rel,dPhi,0);
 end
 %% Figures : fig_feedbackULA_HPBW_Nx_vs_N_variousR,fig_feedbackULA_beamwidth_limit_r_dependent
 if false
     plot_fig_HPBW(hAbs2Rel);
 end
-
-%% Figure : fig_firstSidelobeGain_CB
-plot_fig_sideLobes(hAbs2Rel);
+%% sidelobes
+if false
+    %% symbolics    
+    dPhi_sideLobes  = 0;
+    DU_sideLobes    = 3*pi/N;
+    hAbs2Rel_sidelobes = subs(hAbs2Rel,{dPhi DU},{dPhi_sideLobes,DU_sideLobes});
+    %% plot fig_firstSidelobeGain_CB
+    plot_fig_sideLobes(hAbs2Rel);
+end
+%% Figure : fig_steerErrorTemporalSim
+plot_fig_steerErrorTemporalSim;
