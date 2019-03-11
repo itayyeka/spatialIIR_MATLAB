@@ -23,12 +23,19 @@ if false
 end
 %% sidelobes
 if false
-    %% symbolics    
-    dPhi_sideLobes  = 0;
-    DU_sideLobes    = 3*pi/N;
-    hAbs2Rel_sidelobes = subs(hAbs2Rel,{dPhi DU},{dPhi_sideLobes,DU_sideLobes});
+    %% symbolics
+    dPhi_sideLobes      = 0;
+    DU_sideLobes        = 3*pi/N;
+    hAbs2Rel_sidelobes  = subs(hAbs2Rel,{dPhi DU},{dPhi_sideLobes,DU_sideLobes});
     %% plot fig_firstSidelobeGain_CB
     plot_fig_sideLobes(hAbs2Rel);
 end
 %% Figure : fig_steerErrorTemporalSim
-plot_fig_steerErrorTemporalSim;
+if false
+    plot_fig_steerErrorTemporalSim;
+end
+
+%% Figure : fig_hDUDTContour
+if true 
+    plot_fig_hDUDTContour(hAbs2Rel);
+end

@@ -1,5 +1,6 @@
 function [simOut] = spatialIIR_singleFreq(simCfg)
 %% cfg
+
 try
     simDuration_iterations  = simCfg.nIterations;
 catch
