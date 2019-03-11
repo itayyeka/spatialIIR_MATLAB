@@ -36,6 +36,11 @@ try
 catch
     stftDuration_iterPrecent    = 50;
 end
+try
+    snr = simCfg.snr;
+catch
+    snr = inf;
+end
 nTheta              = 100;
 targetRange_samples = 128;
 propagationVelocity = 3e8;
@@ -61,6 +66,7 @@ rangeError      = lambda*rangeErrorToLambdaRatio;
 D               = lambda/2;
 f_exp           = @(f,t) exp(-1i*2*pi*f*t);
 f_sig1          = @(t) f_exp(sigFreq,t).*heaviside(t);
+f_noise         = @(t) rand(size(t))*10^(-snr/20);  
 N               = nSensors;
 f_dTOA          = @(theta) reshape(((N-1):-1:0)*D*cos(theta)/c,[],1);
 try
@@ -110,8 +116,12 @@ for targetAngle = targetAngleVec
         feedbackGenerationTime      = iterTVec - 2*tPd;
         feedbackGenerationTimeMat   = repmat(feedbackGenerationTime(:),1,N)-repmat(reshape(dTOAVec,1,[]),nSamplesIter,1);
         
-        curIterInput_sig                = f_sig1(feedbackGenerationTimeMat);
-        curIterInput_feedback           = f_resample(historyTVec(:),h(:),feedbackGenerationTimeMat);
+        if isinf(snr)
+            curIterInput_sig    = f_sig1(feedbackGenerationTimeMat);
+        else
+            curIterInput_sig    = f_sig1(feedbackGenerationTimeMat) + f_noise(feedbackGenerationTimeMat);
+        end
+        curIterInput_feedback   = f_resample(historyTVec(:),h(:),feedbackGenerationTimeMat);
         
         iterH = reshape( ...
             ( ...

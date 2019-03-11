@@ -31,11 +31,16 @@ if false
     plot_fig_sideLobes(hAbs2Rel);
 end
 %% Figure : fig_steerErrorTemporalSim
-if false
+if true
     plot_fig_steerErrorTemporalSim;
 end
 
 %% Figure : fig_hDUDTContour
 if true 
     plot_fig_hDUDTContour(hAbs2Rel);
+end
+
+%% Figure : fig_rangError
+if true
+    plot_fig_rangError;
 end
