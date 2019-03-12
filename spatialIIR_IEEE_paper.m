@@ -36,11 +36,16 @@ if true
 end
 
 %% Figure : fig_hDUDTContour
-if true 
+if true
     plot_fig_hDUDTContour(hAbs2Rel);
 end
 
 %% Figure : fig_rangError
 if true
     plot_fig_rangError;
+end
+
+%% application
+if true
+    spatialIIR_dualFreq();
 end

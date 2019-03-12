@@ -71,7 +71,7 @@ rangeError      = lambda*rangeErrorToLambdaRatio;
 D               = lambda/2;
 f_exp           = @(f,t) exp(-1i*2*pi*f*t);
 f_sig           = @(t) f_exp(sigFreq,t).*heaviside(t);
-f_noise         = @(t) rand(size(t))*10^(-snr/20);
+f_noise         = @(t) rand(size(t))*10^(-snr/10);
 N               = nSensors;
 f_dTOA          = @(theta) reshape(((N-1):-1:0)*D*cos(theta)/c,[],1);
 f_steering      = @(theta,f) reshape(exp(1i*2*pi*f*f_dTOA(theta)),[],1);
@@ -135,7 +135,10 @@ for targetAngle = targetAngleVec
             curIterInput_sig    = f_sig(feedbackGenerationTimeMat) + f_noise(feedbackGenerationTimeMat);
         end
         
-        curIterInput_feedback           = f_resample(historyTVec_valid,feedbackSig(historySampleIdVec_valid),feedbackGenerationTimeMat);
+        curIterInput_feedback           = ...
+            f_resample(historyTVec_valid,feedbackSig(historySampleIdVec_valid),feedbackGenerationTimeMat) ...
+            + ...
+            f_noise(feedbackGenerationTimeMat);
         iterArrayInput                  = curIterInput_sig + r*curIterInput_feedback;
         iterArrayFeedback               = reshape(iterArrayInput*alphaVecT(:),[],1);
         feedbackSig(iterSampleIdVec)    = iterArrayFeedback(:);
