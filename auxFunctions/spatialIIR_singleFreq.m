@@ -41,10 +41,15 @@ try
 catch
     snr = inf;
 end
+try
+    thetaS  = simCfg.thetaS;
+catch
+    thetaS  = pi/2;
+end
+
 nTheta              = 100;
-targetRange_samples = 128;
+targetRange_samples = 32;
 propagationVelocity = 3e8;
-thetaS              = pi/2;
 historyIterNum      = 3;
 
 simOut.cfg.simDuration_iterations   = simDuration_iterations;
@@ -65,24 +70,27 @@ lambda          = c/sigFreq;
 rangeError      = lambda*rangeErrorToLambdaRatio;
 D               = lambda/2;
 f_exp           = @(f,t) exp(-1i*2*pi*f*t);
-f_sig1          = @(t) f_exp(sigFreq,t).*heaviside(t);
-f_noise         = @(t) rand(size(t))*10^(-snr/20);  
+f_sig           = @(t) f_exp(sigFreq,t).*heaviside(t);
+f_noise         = @(t) rand(size(t))*10^(-snr/20);
 N               = nSensors;
 f_dTOA          = @(theta) reshape(((N-1):-1:0)*D*cos(theta)/c,[],1);
+f_steering      = @(theta,f) reshape(exp(1i*2*pi*f*f_dTOA(theta)),[],1);
 try
     simCfg.overrideFeedbackCoeffs;
-    f_steering      = @(theta,f) reshape(simCfg.overrideFeedbackCoeffs,[],1);
+    f_alphaVec  = @(thetaS,range,f,f_align) reshape(simCfg.overrideFeedbackCoeffs,[],1);
+    f_betaVec   = @(thetaS,range,f,f_align) f_alphaVec(thetaS,range,f,f_align);
 catch
-    f_steering      = @(theta,f) reshape(exp(1i*2*pi*f*f_dTOA(theta)),[],1);
+    f_alphaVec  = @(thetaS,range,f,f_align) ...
+        reshape( ...
+        (1/N) ...
+        * ...
+        conj(f_steering(thetaS,f)) ...
+        * ...
+        exp(-1i*2*pi*f_align*2*(range+rangeError)/c) ...
+        ,[],1);
+    f_betaVec   = @(thetaS,range,f,f_align) f_alphaVec(thetaS,range,f,f_align);
 end
-f_hCB           = @(thetaS,range,f,f_align) ...
-    reshape( ...
-    (1/N) ...
-    * ...
-    conj(f_steering(thetaS,f)) ...
-    * ...
-    exp(-1i*2*pi*f_align*2*(range+rangeError)/c) ...
-    ,[],1);
+
 fSample                 = 5*sigFreq;
 tSample                 = 1/fSample;
 tPd                     = targetRange_samples*tSample;
@@ -90,21 +98,24 @@ targetRange             = c*tPd;
 nSamplesIter            = floor((2*tPd-N*D/c)/tSample);
 stftDuration_samples    = round(stftDuration_iterPrecent*nSamplesIter/100);
 firstIterStftTVec       = tSample*(0:(stftDuration_samples-1));
-stftRef1                = f_exp(-sigFreq,firstIterStftTVec);
+stftRef                 = f_exp(-sigFreq,firstIterStftTVec);
 
 targetAngleVec          = linspace(0, pi, nTheta);
 simDuration_samples     = simDuration_iterations*nSamplesIter;
 hMat                    = zeros(simDuration_samples,nTheta);
 stftMat                 = zeros(simDuration_iterations,nTheta);
 
-hCB             = f_hCB(thetaS,targetRange,sigFreq,compensationFreq);
-hCBT            = transpose(hCB);
+alphaVec        = f_alphaVec(thetaS,targetRange,sigFreq,compensationFreq);
+alphaVecT       = transpose(alphaVec);
+betaVec         = f_betaVec(thetaS,targetRange,sigFreq,compensationFreq);
+betaVecT        = transpose(betaVec);
 sampleIdVec     = 1 : nSamplesIter;
 targetAngleId   = 0;
 for targetAngle = targetAngleVec
     targetAngleId   = targetAngleId + 1;
     dTOAVec         = f_dTOA(targetAngle);
-    h               = [];
+    feedbackSig     = zeros(simDuration_samples,1);
+    arrayOutput     = zeros(simDuration_samples,1);
     
     for IterId = 1 : simDuration_iterations
         iterSampleIdVec             = (IterId-1)*nSamplesIter + sampleIdVec;
@@ -113,45 +124,36 @@ for targetAngle = targetAngleVec
         historyEndIterId            = IterId-1;
         historySampleIdVec          = ((1+historyStartIterId*nSamplesIter) : historyEndIterId*nSamplesIter);
         historyTVec                 = (historySampleIdVec-1)*tSample;
+        historySampleIdVec_valid    = historySampleIdVec(historySampleIdVec>=1);
+        historyTVec_valid           = historyTVec(historySampleIdVec>=0);
         feedbackGenerationTime      = iterTVec - 2*tPd;
         feedbackGenerationTimeMat   = repmat(feedbackGenerationTime(:),1,N)-repmat(reshape(dTOAVec,1,[]),nSamplesIter,1);
         
         if isinf(snr)
-            curIterInput_sig    = f_sig1(feedbackGenerationTimeMat);
+            curIterInput_sig    = f_sig(feedbackGenerationTimeMat);
         else
-            curIterInput_sig    = f_sig1(feedbackGenerationTimeMat) + f_noise(feedbackGenerationTimeMat);
+            curIterInput_sig    = f_sig(feedbackGenerationTimeMat) + f_noise(feedbackGenerationTimeMat);
         end
-        curIterInput_feedback   = f_resample(historyTVec(:),h(:),feedbackGenerationTimeMat);
         
-        iterH = reshape( ...
-            ( ...
-            curIterInput_sig ...
-            + ...
-            r*curIterInput_feedback ...
-            ) ...
-            * ...
-            hCBT(:) ...
-            ,[],1);
-        
-        h = ...
-            [...
-            h(:) ...
-            ; ...
-            iterH(:) ...
-            ];
+        curIterInput_feedback           = f_resample(historyTVec_valid,feedbackSig(historySampleIdVec_valid),feedbackGenerationTimeMat);
+        iterArrayInput                  = curIterInput_sig + r*curIterInput_feedback;
+        iterArrayFeedback               = reshape(iterArrayInput*alphaVecT(:),[],1);
+        feedbackSig(iterSampleIdVec)    = iterArrayFeedback(:);
         
         if false
             %% DEBUG
-            figure; plot(real(h1));
-            close all;
+            figure;plot(real(feedbackSig));
+            close all;            
         end
         
-        stftInput_iterH                 = iterH(end-stftDuration_samples+1:end);
-        iterHStft                       = reshape(stftRef1,1,[])*stftInput_iterH(:);
+        iterArrayOutput                 = reshape(iterArrayInput*betaVecT(:),[],1);
+        arrayOutput(iterSampleIdVec)    = iterArrayOutput(:);
+        stftInput_iterH                 = iterArrayOutput(end-stftDuration_samples+1:end);
+        iterHStft                       = reshape(stftRef,1,[])*stftInput_iterH(:);
         stftMat(IterId,targetAngleId)   = iterHStft;
     end
     
-    hMat(:,targetAngleId)   = h(:);
+    hMat(:,targetAngleId)   = arrayOutput(:);
     
 end
 
