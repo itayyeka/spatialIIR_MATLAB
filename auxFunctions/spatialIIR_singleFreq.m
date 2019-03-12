@@ -48,7 +48,7 @@ catch
 end
 
 nTheta              = 100;
-targetRange_samples = 32;
+targetRange_samples = 128;
 propagationVelocity = 3e8;
 historyIterNum      = 3;
 

@@ -1,8 +1,14 @@
-function [] = plot_fig_steerErrorTemporalSim()
-simCfg              = [];
-simCfg.nSensors     = 3;
-simCfg.nIterations  = 100;
-simCfg.inputFreq    = 10e9;
+function [] = plot_fig_steerErrorTemporalSim(simCfg)
+try
+    simCfg;
+catch
+    close all;
+    simCfg                          = [];
+    simCfg.nSensors                 = 3;
+    simCfg.nIterations              = 100;
+    simCfg.inputFreq                = 10e9;
+    simCfg.rangeErrorToLambdaRatio  = 0;
+end
 
 simCfg_base     = simCfg;
 defaultSimOut   = spatialIIR_singleFreq();
