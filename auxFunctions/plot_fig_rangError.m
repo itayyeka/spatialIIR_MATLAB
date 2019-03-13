@@ -20,8 +20,8 @@ if true
         simBp_dbAbs_norm        = calc_simBp_dbAbs_norm(simOut);
         figure;
         hold on;
-        plot(targetAngleVec,theoryBp_dbAbs_norm(:),'*r-','MarkerIndices',1:4:nTheta);
-        plot(targetAngleVec,simBp_dbAbs_norm(:),'squareb:','MarkerIndices',3:4:nTheta);
+        plot(targetAngleVec,theoryBp_dbAbs_norm(:),'*b-','MarkerIndices',1:8:nTheta);
+        plot(targetAngleVec,simBp_dbAbs_norm(:),'og:','MarkerIndices',3:8:nTheta);
     end
     %% subfig_steerErrorTemporalSim_r06_err01
     if true
@@ -30,7 +30,7 @@ if true
         simCfg.rangeErrorToLambdaRatio  = 0.1;
         simOut                          = spatialIIR_singleFreq(simCfg);
         simBp_dbAbs_norm                = calc_simBp_dbAbs_norm(simOut);        
-        plot(targetAngleVec,simBp_dbAbs_norm(:),'squareb:','MarkerIndices',3:4:nTheta);
+        plot(targetAngleVec,simBp_dbAbs_norm(:),'squarer:','MarkerIndices',5:8:nTheta);
     end
     %% subfig_steerErrorTemporalSim_r06_err03
     if true
@@ -39,7 +39,7 @@ if true
         simCfg.rangeErrorToLambdaRatio  = 0.3;
         simOut                          = spatialIIR_singleFreq(simCfg);
         simBp_dbAbs_norm                = calc_simBp_dbAbs_norm(simOut);        
-        plot(targetAngleVec,simBp_dbAbs_norm(:),'squareb:','MarkerIndices',3:4:nTheta);
+        plot(targetAngleVec,simBp_dbAbs_norm(:),'diamondr:','MarkerIndices',7:8:nTheta);
     end
 end
 end
