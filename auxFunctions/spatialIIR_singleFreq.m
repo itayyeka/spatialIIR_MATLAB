@@ -46,9 +46,13 @@ try
 catch
     thetaS  = pi/2;
 end
+try
+    targetRange_samples = simCfg.targetRange_samples;
+catch
+    targetRange_samples = 32;
+end
 
 nTheta              = 100;
-targetRange_samples = 128;
 propagationVelocity = 3e8;
 historyIterNum      = 3;
 

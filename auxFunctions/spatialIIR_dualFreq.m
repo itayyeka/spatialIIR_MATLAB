@@ -4,14 +4,16 @@ try
 catch
     close all;
     simCfg                          = [];
-    simCfg.nSensors                 = 3;
+    simCfg.nSensors                 = 5;
     simCfg.nIterations              = 100;
     simCfg.inputFreq                = 10e9;
-    simCfg.dF_ratio                 = 1e-2;
+    simCfg.dF_ratio                 = 1e-1;
+    simCfg.targetRange_samples      = 32;
     simCfg.r                        = 0.6;
-    simCfg.rangeErrorToLambdaRatio  = 0.4;
+    simCfg.rangeErrorToLambdaRatio  = 0.3;
     simCfg.thetaS                   = (1.5)*pi/2;
-    simCfg.snr                      = -20;
+    simCfg.snr                      = inf;
+    simCfg.kappa                    = simCfg.r;
 end
 simCfg_base     = simCfg;
 N               = simCfg.nSensors;
@@ -27,10 +29,11 @@ if true
     %% f1
     if true
         simCfg                      = simCfg_base;
-        simCfg.compensationFreq     = 0;
+        simCfg.r                    = simCfg_base.r*simCfg_base.kappa;
+        simCfg.compensationFreq     = 0*simCfg.dF_ratio*simCfg.inputFreq;
         simOut_f1                   = spatialIIR_singleFreq(simCfg);
         bp_f1                       = db(abs(simOut_f1.hMat(end,:)).^2);
-        stft1                       = simOut_f1.stftMat(end,:);
+        stft1                       = simCfg.r*simOut_f1.stftMat(end,:);
     end
     %% f2
     if true
@@ -39,7 +42,7 @@ if true
         simCfg.inputFreq                = simCfg_base.inputFreq*(1+simCfg.dF_ratio);
         simOut_f2                       = spatialIIR_singleFreq(simCfg);
         bp_f2                           = db(abs(simOut_f2.hMat(end,:)).^2);
-        stft2                           = simOut_f2.stftMat(end,:);
+        stft2                           = simCfg.r*simOut_f2.stftMat(end,:);
         hTwoFreq_err0                   = 1./(1./stft1 - 1./stft2);
         hTwoFreq_err0_dbAbs2            = db(abs(hTwoFreq_err0).^2);
         hTwoFreq_err0_dbAbs2_norm       = hTwoFreq_err0_dbAbs2 - max(hTwoFreq_err0_dbAbs2(:));
