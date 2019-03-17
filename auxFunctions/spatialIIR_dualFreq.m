@@ -1,8 +1,10 @@
-function [] = spatialIIR_dualFreq(simCfg)
+function [simOut] = spatialIIR_dualFreq(simCfg)
+standaloneFalg  = 0;
 try
     simCfg;
 catch
     close all;
+    standaloneFalg                  = 1;
     simCfg                          = [];
     simCfg.nSensors                 = 3;
     simCfg.nIterations              = 100;
@@ -53,8 +55,15 @@ if true
     duVec                   = pi*(cos(targetAngleVec)-cos(simCfg.thetaS));
     theoryBp_dbAbs_norm     = f_theoryBp_dbAbs_norm(duVec,simCfg_base.r,N);
     nTheta                  = simOut_f1.cfg.nTheta;
+    %% simOut
+    simOut.theoryBp_dbAbs_norm          = theoryBp_dbAbs_norm;
+    simOut.bp_singleReq_norm            = bp_singleReq_norm;
+    simOut.hTwoFreq_err0_dbAbs2_norm    = hTwoFreq_err0_dbAbs2_norm;
+    simOut.targetAngleVec               = targetAngleVec;
+    simOut.nTheta                       = nTheta;
+    
     %% plot
-    if true
+    if standaloneFalg
         figure;
         hold on;
         plot(targetAngleVec,theoryBp_dbAbs_norm(:),'*b-','MarkerIndices',1:6:nTheta);

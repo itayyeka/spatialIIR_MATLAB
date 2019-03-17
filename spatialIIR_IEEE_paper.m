@@ -13,7 +13,7 @@ end
 
 %% general case BP (\label{eqn_generalCaseBp})
 syms dPhi DU N;
-if true
+if false
     hAbs2Rel            = H_development();
     hAbs2Rel_steerError = subs(hAbs2Rel,dPhi,0);
 end
@@ -31,21 +31,23 @@ if false
     plot_fig_sideLobes(hAbs2Rel);
 end
 %% Figure : fig_steerErrorTemporalSim
-if true
+if false
     plot_fig_steerErrorTemporalSim;
 end
 
 %% Figure : fig_hDUDTContour
-if true
+if false
     plot_fig_hDUDTContour(hAbs2Rel);
 end
 
 %% Figure : fig_rangError
-if true
+if false
     plot_fig_rangError;
 end
 
 %% application
-if true
-    spatialIIR_dualFreq();
+if false
+    plot_fig_dualfreq_perfectAlignHighSnr;
+    plot_fig_dualfreq_perfectAlignLowSnr;
+    plot_fig_dualfreq_rangeErrorHighSnr;
 end
