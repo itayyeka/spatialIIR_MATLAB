@@ -4,14 +4,14 @@ try
 catch
     close all;
     simCfg                          = [];
-    simCfg.nSensors                 = 5;
+    simCfg.nSensors                 = 3;
     simCfg.nIterations              = 100;
     simCfg.inputFreq                = 10e9;
     simCfg.dF_ratio                 = 1e-1;
     simCfg.targetRange_samples      = 32;
     simCfg.r                        = 0.6;
-    simCfg.rangeErrorToLambdaRatio  = 0.3;
-    simCfg.thetaS                   = (1.5)*pi/2;
+    simCfg.rangeErrorToLambdaRatio  = 0;
+    simCfg.thetaS                   = (1)*pi/2;
     simCfg.snr                      = inf;
     simCfg.kappa                    = simCfg.r;
 end
@@ -30,10 +30,11 @@ if true
     if true
         simCfg                      = simCfg_base;
         simCfg.r                    = simCfg_base.r*simCfg_base.kappa;
-        simCfg.compensationFreq     = 0*simCfg.dF_ratio*simCfg.inputFreq;
+        cur_r                       = simCfg.r;
+        simCfg.compensationFreq     = 0;
         simOut_f1                   = spatialIIR_singleFreq(simCfg);
         bp_f1                       = db(abs(simOut_f1.hMat(end,:)).^2);
-        stft1                       = simCfg.r*simOut_f1.stftMat(end,:);
+        stft1                       = cur_r*simOut_f1.stftMat(end,:);
     end
     %% f2
     if true
@@ -56,9 +57,9 @@ if true
     if true
         figure;
         hold on;
-        plot(targetAngleVec,theoryBp_dbAbs_norm(:),'*b-','MarkerIndices',1:4:nTheta);
-        plot(targetAngleVec,bp_singleReq_norm,'*r-','MarkerIndices',2:4:nTheta);
-        plot(targetAngleVec,hTwoFreq_err0_dbAbs2_norm(:),'*g-','MarkerIndices',3:4:nTheta);
+        plot(targetAngleVec,theoryBp_dbAbs_norm(:),'*b-','MarkerIndices',1:6:nTheta);
+        plot(targetAngleVec,bp_singleReq_norm,'squarer-','MarkerIndices',3:6:nTheta);
+        plot(targetAngleVec,hTwoFreq_err0_dbAbs2_norm(:),'diamondg-','MarkerIndices',5:6:nTheta);
         legend({'theory' 'singleFreq' 'dualFreq'});
     end
 end
