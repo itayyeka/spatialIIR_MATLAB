@@ -13,7 +13,7 @@ end
 
 %% general case BP (\label{eqn_generalCaseBp})
 syms dPhi DU N;
-if false
+if true
     hAbs2Rel            = H_development();
     hAbs2Rel_steerError = subs(hAbs2Rel,dPhi,0);
 end
@@ -36,7 +36,7 @@ if false
 end
 
 %% Figure : fig_hDUDTContour
-if false
+if true
     plot_fig_hDUDTContour(hAbs2Rel);
 end
 
