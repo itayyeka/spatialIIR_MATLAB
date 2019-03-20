@@ -18,33 +18,47 @@ hAbs2Rel            = simplify(rewrite(expand(hAbs2/lim_hAbs2),'sincos'));
 pretty(hAbs2Rel)
 
 %% analytical
-DUVec       = linspace(-pi+1e-6,pi-1e-6,1000);
+DUVec       = linspace(-0.05,0.05,1000);
 hSteerErr   = subs(h,dPhi,0);
 if true
     %% HPBW
-    curExpr     = diff(diff(subs(hAbs2Rel,dPhi,0),DU),DU);
-    nTaylor     = 4;    
+    syms x P;
+    nTaylor     = 4;
     taylorPoly  = 1;
-    nVal        = 5;
-    rVal        = 0.7;
-    syms X;
-    diffExpr    = cell(nTaylor,1);
+    nVal        = 1000;
+    rVal        = 0.2;
+    PVal        = 1/2;
     if true
-        for diffID = 2 : 2 : 2*nTaylor
-            diffExpr{diffID/2}  = get_funcLimit(curExpr,DU,0);
-            curExpr             = diff(diff(curExpr,DU),DU);
-            taylorPoly          = taylorPoly + diffExpr{diffID/2}*(X^diffID)/factorial(diffID);
+        D                   = sin(x)/x;
+        fullExpr            = (P*r^2-(1-r)^2)*D^2-2*P*r*cos(x)*D+P;
+        fullExpr_taylor     = get_funcLimit(fullExpr,x,0);
+        curExpr             = fullExpr;
+        for orderId = 1 : nTaylor
+            curExpr             = diff(curExpr,x);
+            curDiffLim          = get_funcLimit(curExpr,x,0);
+            fullExpr_taylor     = fullExpr_taylor + curDiffLim*x^orderId/factorial(orderId);
         end
-    end    
-    taylorPoly_sim  = abs(eval(subs(taylorPoly,{N,r,X}, {nVal,rVal,DUVec})));
-    hSteerErr_sim   = abs(eval(subs(hAbs2Rel,{N,r,DU,dPhi}, {nVal,rVal,DUVec,0})));
-    figure;
-    hold on;
-    plot(DUVec,taylorPoly_sim);
-    plot(DUVec,hSteerErr_sim,'--'); 
-    ylim([0 1]);
+        xVec                                = linspace(1e-6,3,100);
+        fullExpr_val                        = eval(subs(fullExpr,{P r N x},{PVal rVal nVal xVec}));
+        fullExpr_taylor_val                 = eval(subs(fullExpr_taylor,{P r N x},{PVal rVal nVal xVec}));
+        figure;plot(xVec,[fullExpr_val(:) fullExpr_taylor_val(:)]);
+        fullExprTaylorCoeffs                = simplify(coeffs(fullExpr_taylor,x,'All'));
+        fullExprTaylorCoeffs_HPBW           = simplify(subs(fullExprTaylorCoeffs,P,PVal));
+        fullExprTaylorCoeffs_HPBW_roots     = roots(fullExprTaylorCoeffs_HPBW);        
+        fullExprTaylorCoeffs_HPBW_rootsVec  = eval(subs(fullExprTaylorCoeffs_HPBW_roots,{P,r},{1/2 0.5}));
+        rootId = ...
+            find(...
+            cellfun(@isreal,num2cell(fullExprTaylorCoeffs_HPBW_rootsVec)) ...
+            .* ...
+            cellfun(@(x) real(x)>0 ,num2cell(fullExprTaylorCoeffs_HPBW_rootsVec)) ...
+            );
+        fullExprTaylorCoeffs_HPBW_root          = simplify(expand(fullExprTaylorCoeffs_HPBW_roots(rootId)));
+        rVec                                    = linspace(0,1,100);
+        fullExprTaylorCoeffs_HPBW_rootValVec    = eval(subs(fullExprTaylorCoeffs_HPBW_root,r,rVec));
+        figure;plot(rVec,fullExprTaylorCoeffs_HPBW_rootValVec);
+    end
     %% sidelobes
-    if false        
+    if false
         [~,hSteerErr_den]   = numden(hSteerErr);
         curExpr             = (1/hSteerErr_den)*conj(1/hSteerErr_den);
         curExpr_sim         = abs(eval(subs(curExpr,{N,r,DU}, {5,0.5,DUVec})));
