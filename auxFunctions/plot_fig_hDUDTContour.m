@@ -14,7 +14,7 @@ duVec       = pi*(cos(thetaVec)-cos(defaultCfg.thetaS));
 
 syms                dPhi DU N r;
 hAbs_symMAT         = subs(hAbs2Rel,{dPhi DU N},{dPhi_mat du_mat defaultCfg.nSensors});
-contourLevelList    = [-3 -6 -20 -40 -80 -100];
+contourLevelList    = [-3 -6 -20 -40 -80 -100 -300];
 colormap jet;
 if true
     %% r = 0

@@ -22,7 +22,7 @@ if false
     plot_fig_HPBW(hAbs2Rel);
 end
 %% sidelobes
-if false
+if true    
     %% symbolics
     dPhi_sideLobes      = 0;
     DU_sideLobes        = 3*pi/N;
