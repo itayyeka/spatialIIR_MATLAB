@@ -18,9 +18,34 @@ hAbs2Rel            = simplify(rewrite(expand(hAbs2/lim_hAbs2),'sincos'));
 pretty(hAbs2Rel)
 
 %% analytical
-DUVec       = linspace(-0.05,0.05,1000);
+DUVec       = linspace(-0.05,0.05,200);
 hSteerErr   = subs(h,dPhi,0);
 if true
+    %% sidelobes
+    if false
+        hNum            = (1-exp(1i*N*DU))/(N*(1-exp(1i*DU)));
+        hDen            = 1-r*hNum;
+        hNumAbs2        = simplify(rewrite(expand(hNum*conj(hNum)),'sincos'));
+        hDenAbs2        = simplify(rewrite(expand(hDen*conj(hDen)),'sincos'));
+        steerH          = hNum/hDen;
+        steerHAbs2      = simplify(rewrite(expand(steerH*conj(steerH)),'sincos'));
+        pretty(hDenAbs2);
+        DUVec           = linspace(-pi,pi,1000);
+        NVal            = 10;
+        rVal            = 0.9;
+        hNumVal         = subs(hNumAbs2,{DU,N,r},{DUVec, NVal, rVal});
+        hDenVal         = subs(hDenAbs2,{DU,N,r},{DUVec, NVal, rVal});
+        steerHAbs2Val   = subs(steerHAbs2,{DU,N,r},{DUVec, NVal, rVal});
+        
+        hNumVal_norm        = hNumVal/max(abs(hNumVal));
+        hDenVal_norm        = hDenVal/max(abs(hDenVal));
+        steerHAbs2Val_norm  = steerHAbs2Val/max(abs(steerHAbs2Val));
+        
+        figure;plot(DUVec,db([hNumVal_norm(:) hDenVal_norm(:) steerHAbs2Val_norm(:)]));
+        hDiff           = simplify(rewrite(expand(diff(hDenAbs2,DU)),'exp'));
+        pretty(hDiff);
+        
+    end
     %% HPBW
     syms x P;
     nTaylor     = 4;
@@ -44,7 +69,7 @@ if true
         figure;plot(xVec,[fullExpr_val(:) fullExpr_taylor_val(:)]);
         fullExprTaylorCoeffs                = simplify(coeffs(fullExpr_taylor,x,'All'));
         fullExprTaylorCoeffs_HPBW           = simplify(subs(fullExprTaylorCoeffs,P,PVal));
-        fullExprTaylorCoeffs_HPBW_roots     = roots(fullExprTaylorCoeffs_HPBW);        
+        fullExprTaylorCoeffs_HPBW_roots     = roots(fullExprTaylorCoeffs_HPBW);
         fullExprTaylorCoeffs_HPBW_rootsVec  = eval(subs(fullExprTaylorCoeffs_HPBW_roots,{P,r},{1/2 0.5}));
         rootId = ...
             find(...
