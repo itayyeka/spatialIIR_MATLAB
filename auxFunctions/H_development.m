@@ -53,7 +53,7 @@ if true
     nVal        = 1000;
     rVal        = 0.2;
     PVal        = 1/2;
-    if true
+    if false % we decided to skip the Taylor expansion
         D                   = sin(x)/x;
         fullExpr            = (P*r^2-(1-r)^2)*D^2-2*P*r*cos(x)*D+P;
         fullExpr_taylor     = get_funcLimit(fullExpr,x,0);

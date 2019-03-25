@@ -14,12 +14,12 @@ end
 %% general case BP (\label{eqn_generalCaseBp})
 syms dPhi DU N;
 if true
-    [hAbs2Rel,HPBW_rootValVec]  = H_development();
-    hAbs2Rel_steerError         = subs(hAbs2Rel,dPhi,0);
+    [hAbs2Rel]          = H_development();
+    hAbs2Rel_steerError = subs(hAbs2Rel,dPhi,0);
 end
 %% Figures : fig_feedbackULA_HPBW_Nx_vs_N_variousR,fig_feedbackULA_beamwidth_limit_r_dependent
-if true
-    plot_fig_HPBW(hAbs2Rel,HPBW_rootValVec);
+if false
+    plot_fig_HPBW(hAbs2Rel);
 end
 %% sidelobes
 if true    
@@ -36,7 +36,7 @@ if false
 end
 
 %% Figure : fig_hDUDTContour
-if true
+if false
     plot_fig_hDUDTContour(hAbs2Rel);
 end
 

@@ -1,7 +1,7 @@
-function [] = plot_fig_HPBW(hSym,HPBW_rootValVec)
+function [] = plot_fig_HPBW(hSym)
 syms DU dPhi r N;
 
-rVec    = [0 0.1 : 0.2 : 0.9];
+rVec    = [0 0.1 : 0.1 : 0.9 0.95 0.99];
 nVec    = 2:100;
 
 n_r = length(rVec);
@@ -34,18 +34,32 @@ if true
     We caclulated N*DU = N*u*pi -> 2*1.4*pi/pi = 2*1.4.
     In the plot, we show resultMat/2 to fit the known 1.4 result for r=0.
     %}
-    plot(resultMat/2);
+    rIdVec  = 1:2:length(rVec(rVec<=0.9));
+    plot(resultMat(:,rIdVec)/2);
     %% fig_feedbackULA_beamwidth_limit_r_dependent
     %{
     we plot the limit as a function of r.
     It fits (1-r)(-0.4r+1.4)
-    %}
-    figure;
-    hold on;
+    %}    
     rLimitVec = resultMat(end,:)/2;
-    plot(rVec,rLimitVec,'-*');
-    approxVal = (1-rVec).*(-0.4*rVec+1.4);
-    plot(rVec,approxVal,'-diamond');
-    legend('simulation','fitting');
+    if true
+        %{
+        We decided that we would like to plot B(r) = 1.4/(N\dTheta) and not
+        the actual values of N\dTheta. We can then express the aperture
+        improvemnt more easily.
+        %}
+        fig = figure;
+        left_color = [0 0 1];
+        right_color = [0 1 0];
+        set(fig,'defaultAxesColorOrder',[left_color; right_color]);
+        hold on;
+        plot(rVec,rLimitVec,'-*','MarkerIndices',1:2:length(rVec));
+        approxVal = (1-rVec).*(-0.4*rVec+1.4);
+        plot(rVec,approxVal,'-diamond','MarkerIndices',2:2:length(rVec));
+        legend('simulation','fitting');
+        yyaxis right
+        B           = 1.4./rLimitVec;
+        plot(rVec,B(:),'-.b');    
+    end
 end
 end
