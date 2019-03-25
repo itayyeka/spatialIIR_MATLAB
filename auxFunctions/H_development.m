@@ -1,4 +1,4 @@
-function [hAbs2Rel] = H_development()
+function [hAbs2Rel,fullExprTaylorCoeffs_HPBW_rootValVec] = H_development()
 %% symbolics
 syms N DU r dPhi positive;
 
@@ -23,7 +23,7 @@ hSteerErr   = subs(h,dPhi,0);
 if true
     %% HPBW
     syms x P;
-    nTaylor     = 4;
+    nTaylor     = 6;
     taylorPoly  = 1;
     nVal        = 1000;
     rVal        = 0.2;
@@ -43,18 +43,18 @@ if true
         fullExpr_taylor_val                 = eval(subs(fullExpr_taylor,{P r N x},{PVal rVal nVal xVec}));
         figure;plot(xVec,[fullExpr_val(:) fullExpr_taylor_val(:)]);
         fullExprTaylorCoeffs                = simplify(coeffs(fullExpr_taylor,x,'All'));
-        fullExprTaylorCoeffs_HPBW           = simplify(subs(fullExprTaylorCoeffs,P,PVal));
+        fullExprTaylorCoeffs_HPBW           = simplify(fullExprTaylorCoeffs);
         fullExprTaylorCoeffs_HPBW_roots     = roots(fullExprTaylorCoeffs_HPBW);        
         fullExprTaylorCoeffs_HPBW_rootsVec  = eval(subs(fullExprTaylorCoeffs_HPBW_roots,{P,r},{1/2 0.5}));
         rootId = ...
             find(...
             cellfun(@isreal,num2cell(fullExprTaylorCoeffs_HPBW_rootsVec)) ...
             .* ...
-            cellfun(@(x) real(x)>0 ,num2cell(fullExprTaylorCoeffs_HPBW_rootsVec)) ...
+            cellfun(@(x) real(x)>0 && x<2 ,num2cell(fullExprTaylorCoeffs_HPBW_rootsVec)) ...
             );
         fullExprTaylorCoeffs_HPBW_root          = simplify(expand(fullExprTaylorCoeffs_HPBW_roots(rootId)));
         rVec                                    = linspace(0,1,100);
-        fullExprTaylorCoeffs_HPBW_rootValVec    = eval(subs(fullExprTaylorCoeffs_HPBW_root,r,rVec));
+        fullExprTaylorCoeffs_HPBW_rootValVec    = eval(subs(fullExprTaylorCoeffs_HPBW_root,{P r},{PVal rVec}));
         figure;plot(rVec,fullExprTaylorCoeffs_HPBW_rootValVec);
     end
     %% sidelobes

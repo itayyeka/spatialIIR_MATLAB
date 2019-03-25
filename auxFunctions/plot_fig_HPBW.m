@@ -1,4 +1,4 @@
-function [] = plot_fig_HPBW(hSym)
+function [] = plot_fig_HPBW(hSym,HPBW_rootValVec)
 syms DU dPhi r N;
 
 rVec    = [0 0.1 : 0.2 : 0.9];
