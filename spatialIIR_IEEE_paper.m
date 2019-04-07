@@ -22,7 +22,7 @@ if false
     plot_fig_HPBW(hAbs2Rel);
 end
 %% sidelobes
-if true    
+if false    
     %% symbolics
     dPhi_sideLobes      = 0;
     DU_sideLobes        = 3*pi/N;
@@ -41,7 +41,7 @@ if false
 end
 
 %% Figure : fig_rangError
-if false
+if true
     plot_fig_rangError;
 end
 

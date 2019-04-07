@@ -51,8 +51,11 @@ try
 catch
     targetRange_samples = 32;
 end
-
-nTheta              = 100;
+try
+    nTheta              = simCfg.nTheta;
+catch
+    nTheta              = 100;
+end
 propagationVelocity = 3e8;
 historyIterNum      = 3;
 
