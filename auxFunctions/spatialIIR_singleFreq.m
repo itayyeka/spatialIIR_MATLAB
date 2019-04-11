@@ -139,13 +139,18 @@ for targetAngle = targetAngleVec
         if isinf(snr)
             curIterInput_sig    = f_sig(feedbackGenerationTimeMat);
         else
-            curIterInput_sig    = f_sig(feedbackGenerationTimeMat) + f_noise(feedbackGenerationTimeMat);
+            curIterInput_sig    = ...
+                f_sig(feedbackGenerationTimeMat) ...
+                ...+ ...
+                ...f_noise(feedbackGenerationTimeMat) ...
+                ;
         end
         
         curIterInput_feedback           = ...
             f_resample(historyTVec_valid,feedbackSig(historySampleIdVec_valid),feedbackGenerationTimeMat) ...
-            + ...
-            f_noise(feedbackGenerationTimeMat);
+            ...+ ...
+            ...f_noise(feedbackGenerationTimeMat)
+            ;
         iterArrayInput                  = curIterInput_sig + r*curIterInput_feedback;
         iterArrayFeedback               = reshape(iterArrayInput*alphaVecT(:),[],1);
         feedbackSig(iterSampleIdVec)    = iterArrayFeedback(:);
@@ -156,7 +161,7 @@ for targetAngle = targetAngleVec
             close all;            
         end
         
-        iterArrayOutput                 = reshape(iterArrayInput*betaVecT(:),[],1);
+        iterArrayOutput                 = reshape(iterArrayInput*betaVecT(:),[],1) + f_noise(iterTVec(:));
         arrayOutput(iterSampleIdVec)    = iterArrayOutput(:);
         stftInput_iterH                 = iterArrayOutput(end-stftDuration_samples+1:end);
         iterHStft                       = reshape(stftRef,1,[])*stftInput_iterH(:);
