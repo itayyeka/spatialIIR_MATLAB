@@ -13,7 +13,7 @@ end
 
 %% general case BP (\label{eqn_generalCaseBp})
 syms dPhi DU N;
-if true
+if false
     [hAbs2Rel]          = H_development();
     hAbs2Rel_steerError = subs(hAbs2Rel,dPhi,0);
 end
@@ -41,12 +41,12 @@ if false
 end
 
 %% Figure : fig_rangError
-if true
+if false
     plot_fig_rangError;
 end
 
 %% application
-if false
+if true
     plot_fig_dualfreq_perfectAlignHighSnr;
     plot_fig_dualfreq_perfectAlignLowSnr;
     plot_fig_dualfreq_rangeErrorHighSnr;
