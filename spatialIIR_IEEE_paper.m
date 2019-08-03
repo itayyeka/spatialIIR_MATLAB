@@ -30,6 +30,11 @@ if false
     %% plot fig_firstSidelobeGain_CB
     plot_fig_sideLobes(hAbs2Rel);
 end
+%% directivity
+if true
+    directivityAnalysis(1);
+end
+
 %% Figure : fig_steerErrorTemporalSim
 if false
     plot_fig_steerErrorTemporalSim;
@@ -46,7 +51,7 @@ if false
 end
 
 %% application
-if true
+if false
     plot_fig_dualfreq_perfectAlignHighSnr;
     plot_fig_dualfreq_perfectAlignLowSnr;
     plot_fig_dualfreq_rangeErrorHighSnr;
