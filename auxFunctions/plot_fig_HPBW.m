@@ -59,7 +59,8 @@ if true
         legend('simulation','fitting');
         yyaxis right
         B           = 1.4./rLimitVec;
-        plot(rVec,B(:),'-.b');    
+        B_log       = log10(B); 
+        plot(rVec,B_log(:),'-.b');    
     end
 end
 end
