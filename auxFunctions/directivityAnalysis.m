@@ -7,9 +7,11 @@ catch
     clc;
 end
 %% configure
-nVec    = 2:6;
+nVec    = 2:7;
 rVec    = [0.25 : 0.05 : 0.75];
 rVec    = [0.2 : 0.1 : 0.7];
+rVec    = [1/10 1/9 1/8 1/7 1/6 1/5 1/4 1/3 1/2];
+
 %% symbolics
 syms x real;
 syms r positive;
@@ -22,9 +24,9 @@ h = @(t,p,N,r) hNum(t,p,N,r)./hDen(t,p,N,r);
 
 %% simulate
 integralResultMAT   = zeros(length(rVec),length(nVec));
-for nVal = nVec
-    %% r effct on integrand - lowers the overall integration - increses directivity
-    for rVal = rVec
+exprMAT             = zeros(size(integralResultMAT));
+for rVal = rVec
+    for nVal = nVec    
         curIntRes = ...
             vpaintegral(h(x,0,nVal,rVal), 0, 2*pi...
             ...,'IgnoreAnalyticConstraints', true, 'IgnoreSpecialCases', true, 'PrincipalValue',true ...
@@ -50,12 +52,17 @@ for nVal = nVec
             rVec == rVal,...
             nVec == nVal...
             ) = real(Dir_eval);
-    end
+        exprMAT(...
+            rVec == rVal,...
+            nVec == nVal...
+            ) = (nVal-rVal)/(1-rVal);
+    end    
 end
+errMAT = abs(exprMAT - integralResultMAT);
 integralResultMAT_CELL = num2cell(integralResultMAT);
 integralResultMAT_CELL_rat = cellfun(@(x) rats(x), integralResultMAT_CELL, 'UniformOutput', false);
 rVec_CELL = num2cell(rVec(:));
-rVec_CELL_STR = cellfun(@(x) num2str(x), rVec_CELL, 'UniformOutput', false);
+rVec_CELL_STR = cellfun(@(x) rats(x), rVec_CELL, 'UniformOutput', false);
 nVec_CELL_STR = cellfun(@(x) ['N' num2str(x)], num2cell(nVec), 'UniformOutput', false);
 T = array2table([rVec_CELL_STR(:) integralResultMAT_CELL_rat],...
     'VariableNames',[{'r'} reshape(nVec_CELL_STR,1,[])])
