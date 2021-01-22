@@ -5,7 +5,7 @@ clc;
 try
     auxFunctionsIndicatorFunctions;
 catch
-    restoredefaultpath;
+    %%restoredefaultpath;
     [funcPath,~,~]  = fileparts(mfilename('fullpath'));
     addpath(genpath(fullfile(funcPath,'auxFunctions')));
     auxFunctionsIndicatorFunctions;
@@ -31,7 +31,7 @@ if false
     plot_fig_sideLobes(hAbs2Rel);
 end
 %% directivity
-if true
+if false
     directivityAnalysis(1);
 end
 

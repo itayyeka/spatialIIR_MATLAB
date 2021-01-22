@@ -1,15 +1,6 @@
-function [] = directivityAnalysis(cfgIn)
-try
-    cfgIn;
-catch
-    clear;
-    close all;
-    clc;
-end
+function [] = directivityAnalysis()
 %% configure
 nVec    = 2:10;
-rVec    = [0.25 : 0.05 : 0.75];
-rVec    = [0.2 : 0.1 : 0.7];
 rVec    = [1/10 1/5 1/3 1/2 5/8 3/4 4/5];
 
 %% symbolics
@@ -30,7 +21,6 @@ for rVal = rVec
     for nVal = nVec    
         curIntRes = ...
             vpaintegral(h(x,0,nVal,rVal), 0, 2*pi...
-            ...,'IgnoreAnalyticConstraints', true, 'IgnoreSpecialCases', true, 'PrincipalValue',true ...
             ) ...
             /(2*pi);
         Dir = 1 / curIntRes;
@@ -44,8 +34,6 @@ for rVal = rVec
             ,', N = ', num2str(nVal) ...
             ,', int = ',  curIntRes_STR ...
             ,', Dir = ', Dir_STR ...
-            ...,', Dir(1-r)^2 = ', rats(eval(Dir_STR)*(1-rVal)^2) ...
-            ...,', tol = ', num2str(tol) ...
             ]);
         integralResultMAT(...
             rVec == rVal,...
@@ -62,11 +50,3 @@ surf(r_GRID, n_GRID, transpose(integralResultMAT), 'EdgeColor', "interp", 'FaceA
 hold on;
 plot3(r_GRID, n_GRID, transpose(exprMAT), 'dk', 'MarkerSize', 10, 'LineWidth', 2, 'MarkerFaceColor', 'k');
 legend({'Numeric integration', 'Analytic expression'});
-% errMAT = abs(exprMAT - integralResultMAT)
-% integralResultMAT_CELL = num2cell(integralResultMAT);
-% integralResultMAT_CELL_rat = cellfun(@(x) rats(x), integralResultMAT_CELL, 'UniformOutput', false);
-% rVec_CELL = num2cell(rVec(:));
-% rVec_CELL_STR = cellfun(@(x) rats(x), rVec_CELL, 'UniformOutput', false);
-% nVec_CELL_STR = cellfun(@(x) ['N' num2str(x)], num2cell(nVec), 'UniformOutput', false);
-% T = array2table([rVec_CELL_STR(:) integralResultMAT_CELL_rat],...
-%     'VariableNames',[{'r'} reshape(nVec_CELL_STR,1,[])])

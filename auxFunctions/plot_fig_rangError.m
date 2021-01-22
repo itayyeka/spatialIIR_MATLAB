@@ -2,7 +2,7 @@ function [] = plot_fig_rangError()
 simCfg              = [];
 simCfg.nSensors     = 3;
 simCfg.nIterations  = 100;
-simCfg.inputFreq    = 10e9;
+simCfg.inputFreq    = 1e9;
 simCfg.nTheta       = 300;
 
 simCfg_base     = simCfg;
@@ -35,7 +35,7 @@ if true
         plot(duVec/pi,simBp_dbAbs_norm(:),'squarer--','MarkerIndices',markerIndices);
     end
     %% subfig_steerErrorTemporalSim_r06_err03
-    if true
+    if false
         simCfg                          = simCfg_base;
         simCfg.r                        = 0.6;
         simCfg.rangeErrorToLambdaRatio  = 0.3;
