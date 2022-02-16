@@ -1,14 +1,14 @@
 function [] = plot_fig_beamThining()
     simCfg              = [];
     simCfg.nSensors     = 3;
-    simCfg.nIterations  = 100;
-    simCfg.inputFreq    = 10e9;
+    simCfg.nIterations  = 1;
+    simCfg.sigFreq      = 10e9;
     simCfg.nTheta       = 300;
-    simCfg.r                = 0.9;
+    simCfg.r            = 0.9;
     
     simCfg_base     = simCfg;
     defaultSimOut   = spatialIIR_singleFreq(simCfg);
-    targetAngleVec  = defaultSimOut.targetAngleVec;
+    targetAngleVec  = defaultSimOut.cfg.targetAngleVec;
     nIterVec        = [1, 2, 5, 10, 50];
     figure;
     for nIter = nIterVec
@@ -20,7 +20,7 @@ function [] = plot_fig_beamThining()
         hold on;
         plot(targetAngleVec/pi,simBp_dbAbs_norm(:));
         %% cfg
-        ylim([-50 0]);
-        fixfig;
+%         ylim([-50 0]);
+%         fixfig;
     end
 end

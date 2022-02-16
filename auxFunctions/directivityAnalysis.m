@@ -50,3 +50,5 @@ surf(r_GRID, n_GRID, transpose(integralResultMAT), 'EdgeColor', "interp", 'FaceA
 hold on;
 plot3(r_GRID, n_GRID, transpose(exprMAT), 'dk', 'MarkerSize', 10, 'LineWidth', 2, 'MarkerFaceColor', 'k');
 legend({'Numeric integration', 'Analytic expression'});
+figure;
+surf(r_GRID, n_GRID, transpose(integralResultMAT)-transpose(exprMAT), 'EdgeColor', "interp", 'FaceAlpha',0.75);
